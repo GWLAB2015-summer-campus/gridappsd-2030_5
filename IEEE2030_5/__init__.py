@@ -33,7 +33,7 @@ STATUS_CODES = {
     204: '204 No Content',
     500: '500 Internal Error',
 }
-XML_HEADERS = [("Content-Type", "application/sep+xml"), ("Content-Type", "application/xml")]
+XML_HEADERS = {"Content-Type": "application/sep+xml"} #[("Content-Type", "application/sep+xml")]
 CREATED_HEADERS = [("Content-Length", "0")]
 
 Endpoint = namedtuple('Endpoint', ['url', 'callback'])
