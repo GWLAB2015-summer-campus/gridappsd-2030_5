@@ -1,2 +1,4 @@
 pytz
 six
+fastapi
+uvicorn
