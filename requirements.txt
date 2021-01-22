@@ -2,3 +2,4 @@ pytz
 six
 fastapi
 uvicorn
+xmltodict
