@@ -1,21 +1,19 @@
 import json
 import logging
 import ssl
-from http.server import BaseHTTPRequestHandler
-from wsgiref.simple_server import WSGIRequestHandler
+from pathlib import Path
 
 import OpenSSL
 import werkzeug.exceptions
 from flask import Flask, render_template, request, redirect, Response
-from flask_sessions import Session
 from werkzeug.serving import make_server, BaseWSGIServer
 
 __all__ = ["build_server"]
 
 # templates = Jinja2Templates(directory="templates")
-# from IEEE2030_5.endpoints import dcap, IEEE2030_5Renderer
 from ieee_2030_5.config import ServerConfiguration
-from ieee_2030_5.certs import TLSRepository
+from ieee_2030_5.certs import TLSRepository, lfdi_from_fingerprint, sfdi_from_lfdi
+from ieee_2030_5.data.indexer import get_href_all_names, get_href
 from ieee_2030_5.server.admin_endpoints import AdminEndpoints
 from ieee_2030_5.server.server_endpoints import ServerEndpoints
 from ieee_2030_5.server.server_constructs import get_groups, EndDevices
@@ -34,6 +32,7 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
     in the application.
     """
     tlsrepo: TLSRepository
+    debug_device: str
 
     def make_environ(self):
         """
@@ -44,7 +43,6 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
         peer certificate into the hash. That exposes it to us later in
         the request variable that Flask provides
         """
-        PeerCertWSGIRequestHandler.protocol_version = "HTTP/1.1"
         environ = super(PeerCertWSGIRequestHandler, self).make_environ()
 
         # Assume browser is being hit with things that start with /admin allow
@@ -59,12 +57,21 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
             environ['ieee_2030_5_peercert'] = x509
             environ['ieee_2030_5_subject'] = x509.get_subject().CN
             environ['ieee_2030_5_serial_number'] = x509.get_serial_number()
-
+            environ['ieee_2030_5_lfdi'] = lfdi_from_fingerprint(x509.digest("sha1").decode('ascii'))
+            environ['ieee_2030_5_sfdi'] = sfdi_from_lfdi(environ['ieee_2030_5_lfdi'])
+            _log.debug(f"Environment lfdi: {environ['ieee_2030_5_lfdi']} sfdi: {environ['ieee_2030_5_sfdi']}")
         except OpenSSL.crypto.Error:
-            environ['peercert'] = None
+            # Only if we have a debug_device do we want to expose this device through the admin page.
+            if self.debug_device:
+                cert_file, key_file = self.tlsrepo.get_file_pair(self.debug_device)
+                x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, Path(cert_file).read_bytes())
+                environ['ieee_2030_5_peercert'] = x509
+                environ['ieee_2030_5_subject'] = x509.get_subject().CN
+                print(x509.get_serial_number())
 
-        # self.protocol_version = "HTTP/1.1"
-        _log.debug("Making environ")
+            else:
+                environ['peercert'] = None
+
         return environ
 
 
@@ -95,16 +102,7 @@ def after_request(response: Response) -> Response:
     return response
 
 
-def build_server(config: ServerConfiguration,
-                 tlsrepo: TLSRepository,
-                 enddevices: EndDevices, **kwargs) -> BaseWSGIServer:
-    app = Flask(__name__, template_folder="/repos/gridappsd-2030_5/templates")
-    # Debug headers path and request arguments
-    app.before_request(before_request)
-    # Allows for larger data to be sent through because of chunking types.
-    app.before_request(handle_chunking)
-    app.after_request(after_request)
-
+def __build_ssl_context__(tlsrepo: TLSRepository) -> ssl.SSLContext:
     # to establish an SSL socket we need the private key and certificate that
     # we want to serve to users.
     server_key_file = str(tlsrepo.server_key_file)
@@ -119,7 +117,8 @@ def build_server(config: ServerConfiguration,
     # aligns with the purpose we provide as an argument. Here we provide
     # Purpose.CLIENT_AUTH, so the SSLContext is set up to handle validation
     # of client certificates.
-    ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=str(ca_cert))
+    ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH,
+                                             cafile=str(ca_cert))
 
     # load in the certificate and private key for our server to provide to clients.
     # force the client to provide a certificate.
@@ -131,6 +130,18 @@ def build_server(config: ServerConfiguration,
     # change this to ssl.CERT_REQUIRED during deployment.
     # TODO if required we have to have one all the time on the server.
     ssl_context.verify_mode = ssl.CERT_OPTIONAL  # ssl.CERT_REQUIRED
+    return ssl_context
+
+
+def __build_app__(config: ServerConfiguration, tlsrepo: TLSRepository,
+                  enddevices: EndDevices) -> Flask:
+    app = Flask(__name__, template_folder=str(Path(".").resolve().joinpath('templates')))
+
+    # Debug headers path and request arguments
+    app.before_request(before_request)
+    # Allows for larger data to be sent through because of chunking types.
+    app.before_request(handle_chunking)
+    app.after_request(after_request)
 
     ServerEndpoints(app, end_devices=enddevices, tls_repo=tlsrepo, config=config)
     AdminEndpoints(app, end_devices=enddevices, tls_repo=tlsrepo, config=config)
@@ -149,10 +160,24 @@ def build_server(config: ServerConfiguration,
     def admin_home():
         return render_template("admin/index.html")
 
+    @app.route("/admin/resources")
+    def admin_resource_list():
+        resource = request.args.get("rurl")
+        obj = get_href(resource)
+        all_resources = sorted(get_href_all_names())
+        if obj:
+            return render_template("admin/resource_list.html",
+                                   resource_urls=all_resources,
+                                   href_shown=resource,
+                                   object=obj)
+        else:
+            return render_template("admin/resource_list.html", resource_urls=all_resources)
+
     @app.route("/admin/clients")
     def admin_clients():
         clients = tlsrepo.client_list
-        return json.dumps(clients)  # render_template("admin/clients.html", registered=clients, connected=[])
+        return json.dumps(
+            clients)  # render_template("admin/clients.html", registered=clients, connected=[])
 
     @app.route("/admin/groups")
     def admin_groups():
@@ -171,14 +196,44 @@ def build_server(config: ServerConfiguration,
         routes += "</ul>"
         return Response(f"{routes}")
 
+    return app
+
+
+def run_server(config: ServerConfiguration,
+               tlsrepo: TLSRepository,
+               enddevices: EndDevices, **kwargs):
+    app = __build_app__(config, tlsrepo, enddevices)
+    ssl_context = __build_ssl_context__(tlsrepo)
+
     try:
         host, port = config.server_hostname.split(":")
     except ValueError:
         # host and port not available
         host = config.server_hostname
         port = 8443
-    # Add session support to the application.
-    Session(app)
+
+    PeerCertWSGIRequestHandler.debug_device = config.debug_device
+    PeerCertWSGIRequestHandler.tlsrepo = tlsrepo
+    app.run(host=host,
+            ssl_context=ssl_context,
+            request_handler=PeerCertWSGIRequestHandler,
+            port=port,
+            **kwargs)
+
+
+def build_server(config: ServerConfiguration,
+                 tlsrepo: TLSRepository,
+                 enddevices: EndDevices, **kwargs) -> BaseWSGIServer:
+
+    app = __build_app__(config, tlsrepo, enddevices)
+    ssl_context = __build_ssl_context__(tlsrepo)
+
+    try:
+        host, port = config.server_hostname.split(":")
+    except ValueError:
+        # host and port not available
+        host = config.server_hostname
+        port = 8443
 
     return make_server(app=app,
                        host=host,
