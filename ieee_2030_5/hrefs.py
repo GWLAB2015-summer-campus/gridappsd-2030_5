@@ -1,16 +1,23 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import Optional, List
+from typing import List, Optional
 
 EDEV = "edev"
 DCAP = "dcap"
-UTP = "utp"
+UTP = "upt"
 MUP = "mup"
 DRP = "drp"
 SDEV = "sdev"
 MSG = "msg"
 DER = "der"
-CURVE = "curve"
+CURVE = "dc"
 PROGRAM = "program"
+RSPS = "rsps"
+LOG = "log"
+DERC = "derc"
+DDERC = "dderc"
 
 DEFAULT_DCAP_ROOT = f"/{DCAP}"
 DEFAULT_EDEV_ROOT = f"/{EDEV}"
@@ -22,9 +29,19 @@ DEFAULT_MESSAGE_ROOT = f"/{MSG}"
 DEFAULT_DER_ROOT = f"/{DER}"
 DEFAULT_CURVE_ROOT = f"/{CURVE}"
 DEFAULT_PROGRAM_ROOT = f"/{PROGRAM}"
+DEFAULT_RSPS_ROOT = f"/{RSPS}"
+DEFAULT_LOG_EVENT_ROOT = f"/{LOG}"
 
 SEP = "_"
 MATCH_REG = "[a-zA-Z0-9_]*"
+
+# Used as a sentinal value when we only want the href of the root
+NO_INDEX = -1
+
+
+@lru_cache()
+def get_server_config_href() -> str:
+    return "/server/cfg"
 
 
 @lru_cache()
@@ -39,6 +56,104 @@ def get_curve_href(index: int) -> str:
 def get_fsa_href(fsa_list_href: str, index: int) -> str:
     return SEP.join([fsa_list_href, str(index)])
 
+        
+def mirror_usage_point_href(mirror_usage_point_index: int = NO_INDEX):
+    """Mirror Usage Point hrefs
+    
+       /mup
+       /mup/{mirror_usage_point_index}
+       
+    
+    """
+    if mirror_usage_point_index == NO_INDEX:
+        ret = DEFAULT_MUP_ROOT
+    else:
+        ret = SEP.join([DEFAULT_MUP_ROOT, str(mirror_usage_point_index)])
+    
+    return ret
+
+@dataclass
+class UsagePointHref:
+    usage_point_index: int= NO_INDEX
+    meter_reading_list_index: int= NO_INDEX
+    meter_reading_index: int= NO_INDEX
+    reading_set_index: int= NO_INDEX
+    reading_index: int= NO_INDEX
+    
+    @staticmethod
+    def parse(href: str) -> UsagePointHref:
+        items = href.split(SEP)
+        if len(items) == 1:
+            return UsagePointHref()
+        
+        if len(items) == 2:
+            return UsagePointHref(usage_point_index = int(items[1]))
+
+@dataclass
+class MirrorUsagePointHref:
+    mirror_usage_point_index: int = NO_INDEX
+    meter_reading_list_index: int= NO_INDEX
+    meter_reading_index: int= NO_INDEX
+    reading_set_index: int= NO_INDEX
+    reading_index: int= NO_INDEX
+    
+    @staticmethod
+    def parse(href: str) -> MirrorUsagePointHref:
+        items = href.split(SEP)
+        if len(items) == 1:
+            return MirrorUsagePointHref()
+        
+        if len(items) == 2:
+            return MirrorUsagePointHref(items[1])
+            
+
+def usage_point_href(usage_point_index: int | str = NO_INDEX,
+                     meter_reading_list: bool = False,
+                     meter_reading_list_index: int = NO_INDEX,
+                     meter_reading_index: int = NO_INDEX,
+                     meter_reading_type: bool = False,
+                     reading_set: bool = False,
+                     reading_set_index: int = NO_INDEX,
+                     reading_index: int = NO_INDEX):
+    """Usage point hrefs 
+
+       /upt
+       /upt/{usage_point_index}
+       /upt/{usage_point_index}/mr
+       /upt/{usage_point_index}/mr/{meter_reading_index}
+       /upt/{usage_point_index}/mr/{meter_reading_index}/rt
+       /upt/{usage_point_index}/mr/{meter_reading_index}/rs
+       /upt/{usage_point_index}/mr/{meter_reading_index}/rs/{reading_set_index}
+       /upt/{usage_point_index}/mr/{meter_reading_index}/rs/{reading_set_index}/r
+       /upt/{usage_point_index}/mr/{meter_reading_index}/rs/{reading_set_index}/r/{reading_index}
+       
+       
+
+    """
+    if isinstance(usage_point_index, str):
+        base_upt = usage_point_index
+    else:
+        base_upt = DEFAULT_UPT_ROOT
+        
+    if usage_point_index == NO_INDEX:
+        ret = base_upt        
+    else:
+        if isinstance(usage_point_index, str):
+            arr = [base_upt]
+        else:
+            arr = [DEFAULT_UPT_ROOT, str(usage_point_index)]
+            
+        if meter_reading_list:
+            if meter_reading_list_index == NO_INDEX:
+                arr.extend(["mr"])
+            else:
+                arr.extend(["mr", str(meter_reading_list_index)])
+                
+                
+        
+        ret = SEP.join(arr)
+    return ret
+
 
 def get_der_program_list(fsa_href: str) -> str:
     return SEP.join([fsa_href, "der"])
@@ -52,24 +167,64 @@ def get_fsa_list_href(end_device_href: str) -> str:
     return SEP.join([end_device_href, "fsa"])
 
 
-@lru_cache()
-def get_enddevice_href(index: int) -> str:
-    return SEP.join([DEFAULT_EDEV_ROOT, f"{index}"])
+def get_response_set_href():
+    return DEFAULT_RSPS_ROOT
 
 
 @lru_cache()
-def get_registration_href(index: int) -> str:
-    return SEP.join([DEFAULT_EDEV_ROOT, f"{index}", "reg"])
+def get_der_list_href(index: int) -> str:
+    if index == NO_INDEX:
+        ret = DEFAULT_DER_ROOT
+    else:
+        ret = SEP.join([DEFAULT_DER_ROOT, str(index)])
+    return ret
 
 
 @lru_cache()
-def get_configuration_href(index: int) -> str:
-    return SEP.join([DEFAULT_EDEV_ROOT, f"{index}", "cfg"])
+def get_enddevice_href(edev_indx: int, subref: str = None) -> str:
+    if edev_indx == NO_INDEX:
+        ret = DEFAULT_EDEV_ROOT
+    elif subref:
+        ret = SEP.join([DEFAULT_EDEV_ROOT, f"{edev_indx}", f"{subref}"])
+    else:
+        ret = SEP.join([DEFAULT_EDEV_ROOT, f"{edev_indx}"])
+    return ret
+
+
+@lru_cache()
+def get_registration_href(edev_index: int) -> str:
+    return get_enddevice_href(edev_index, "reg")
+
+
+@lru_cache()
+def get_configuration_href(edev_index: int) -> str:
+    return get_enddevice_href(edev_index, "cfg")
+
+
+@lru_cache()
+def get_power_status_href(edev_index: int) -> str:
+    return get_enddevice_href(edev_index, "ps")
+
+
+@lru_cache()
+def get_device_status(edev_index: int) -> str:
+    return get_enddevice_href(edev_index, "ds")
+
+
+@lru_cache()
+def get_device_information(edev_index: int) -> str:
+    return get_enddevice_href(edev_index, "di")
 
 
 @lru_cache()
 def get_time_href() -> str:
-    return f"{DEFAULT_DCAP_ROOT}{SEP}tm"
+    # return f"{DEFAULT_DCAP_ROOT}{SEP}tm"
+    return f"/tm"
+
+
+@lru_cache()
+def get_log_list_href(edev_index: int) -> str:
+    return get_enddevice_href(edev_index, "lel")
 
 
 @lru_cache()
@@ -77,12 +232,41 @@ def get_dcap_href() -> str:
     return f"{DEFAULT_DCAP_ROOT}"
 
 
+def get_dderc_href() -> str:
+    return SEP.join([DEFAULT_DER_ROOT, DDERC])
+
+
+def get_derc_default_href(derp_index: int) -> str:
+    return SEP.join([DEFAULT_DER_ROOT, DDERC, f"{derp_index}"])
+
+
+def get_derc_href(index: int) -> str:
+    """Return the DERControl href to the caller
+
+    if NO_INDEX then don't include the index in the result.
+    """
+    if index == NO_INDEX:
+        return SEP.join([DEFAULT_DER_ROOT, DERC])
+
+    return SEP.join([DEFAULT_DER_ROOT, DERC, f"{index}"])
+
+
 def get_program_href(index: int, subref: str = None):
-    if subref is not None:
-        ref = f"{DEFAULT_PROGRAM_ROOT}{SEP}{index}{SEP}{subref}"
+    """Return the DERProgram href to the caller
+
+    Args:
+        index: if NO_INDEX then don't include the index in the result else use the index
+        subref: used to specify a subsection in the program.
+    """
+    if index == NO_INDEX:
+        ref = f"{DEFAULT_PROGRAM_ROOT}"
     else:
-        ref = f"{DEFAULT_PROGRAM_ROOT}{SEP}{index}"
+        if subref is not None:
+            ref = f"{DEFAULT_PROGRAM_ROOT}{SEP}{index}{SEP}{subref}"
+        else:
+            ref = f"{DEFAULT_PROGRAM_ROOT}{SEP}{index}"
     return ref
+
 
 # TimeLink
 # tm: str = f"{DEFAULT_DCAP_ROOT}{SEP}tm"
@@ -142,7 +326,9 @@ def get_program_href(index: int, subref: str = None):
 sdev: str = DEFAULT_SELF_ROOT
 
 
-def build_der_link(edev_id: Optional[int] = None, id: Optional[int] = None, suffix: Optional[str] = None) -> str:
+def build_der_link(edev_id: Optional[int] = None,
+                   id: Optional[int] = None,
+                   suffix: Optional[str] = None) -> str:
     if edev_id is None:
         raise ValueError("edev_id must be specified.")
     if id is not None and suffix is not None:
