@@ -5,16 +5,17 @@ from copy import copy, deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Flag, auto
-from typing import Dict, Optional, List, Set
+from typing import Dict, List, Optional, Set
 
 import werkzeug.exceptions
 
+import ieee_2030_5.models as m
 from ieee_2030_5 import hrefs
 from ieee_2030_5.certs import TLSRepository, sfdi_from_lfdi
-from ieee_2030_5.config import ServerConfiguration, DeviceConfiguration, ProgramList
+from ieee_2030_5.config import (DeviceConfiguration, ProgramList, ServerConfiguration)
 from ieee_2030_5.data.indexer import add_href, get_href
-import ieee_2030_5.models as m
-
+from ieee_2030_5.models.adapters import (BaseAdapter, DERControlAdapter, DERProgramAdapter,
+                                         DeviceCapabilityAdapter, EndDeviceAdapter)
 from ieee_2030_5.server.uuid_handler import UUIDHandler
 from ieee_2030_5.types_ import Lfdi
 
@@ -99,10 +100,11 @@ def create_group(level: GroupLevel, name: Optional[str] = None) -> Group:
     # TODO: Standardize urls so we can get them from a central spot.
     program_href = f"/sep2/A{index}/derp/1"
     program = m.DERProgram(mRID=mrid.encode('utf-8'),
-                         description=name,
-                         primacy=index * 10,
-                         href=program_href)
-    program.active_dercontrol_list_link = m.ActiveDERControlListLink(href=f"{program_href}/actderc")
+                           description=name,
+                           primacy=index * 10,
+                           href=program_href)
+    program.active_dercontrol_list_link = m.ActiveDERControlListLink(
+        href=f"{program_href}/actderc")
     program.default_dercontrol_link = m.DefaultDERControlLink(href=f"{program_href}/dderc")
     program.dercontrol_list_link = m.DERControlListLink(href=f"{program_href}/derc")
     program.dercurve_list_link = m.DERCurveListLink(href=f"{program_href}/dc")
@@ -129,77 +131,64 @@ def get_groups() -> Dict[GroupLevel, Group]:
     return groups
 
 
-def initialize_2030_5(config: ServerConfiguration, tlsrepo: TLSRepository) -> EndDevices:
-    """
-    Initialize the 2030.5 server side.  After this function call the following items
-    will be initialized.
-
-    - Curve List
-    - Program Lists
-    If server_mode == "enddevices_create_on_start"
-    - End Devices will be initialized and created
+def initialize_2030_5(config: ServerConfiguration, tlsrepo: TLSRepository):
+    """Initialize the 2030.5 server.  
+    
+    This method initializes the adapters from the configuration objects into
+    the persistence adapters.
     """
     _log.debug("Initializing 2030.5")
     _log.debug("Adding server level urls to cache")
-    add_href(hrefs.get_time_href(), m.TimeLink(href=hrefs.get_time_href()))
-    add_href(hrefs.get_enddevice_list_href(), m.EndDeviceListLink(hrefs.get_enddevice_list_href()))
 
-    _log.debug("Update DERCurves' href property")
-    # Create curves for der controls.
-    for index, curve in enumerate(config.curve_list):
-        curve.href = hrefs.get_curve_href(index)
-        add_href(curve.href, curve)
+    # start intializing the system
+    BaseAdapter.initialize(config, tlsrepo)
 
-    _log.debug("Update m.DERPrograms' adding links to the different program pieces.")
-    # Initialize "global" m.DERPrograms href lists, including all the different links to
-    # locations for active, default, curve and control lists.
-    for program_list in config.program_lists:
-        for index, program in enumerate(program_list.programs):
-            program.href = hrefs.get_program_href(index)
-            program.ActiveDERControlListLink = m.ActiveDERControlListLink(
-                href=hrefs.get_program_href(index, "actderc"), all=0)
-            program.DERCurveListLink = m.DERCurveListLink(
-                href=hrefs.get_program_href(index, "dc"), all=0)
-            program.DefaultDERControlLink = m.DefaultDERControlLink(
-                href=hrefs.get_program_href(index, "dderc"))
-            program.DERControlListLink = m.DERControlListLink(
-                href=hrefs.get_program_href(index, "derc"), all=0)
+    # # DERControlAdapter.initialize_from_storage()
+    # add_href(hrefs.get_time_href(), m.TimeLink(href=hrefs.get_time_href()))
+    # add_href(hrefs.get_enddevice_list_href(), m.EndDeviceListLink(hrefs.get_enddevice_list_href()))
 
-            add_href(program.href, program)
+    # _log.debug("Update DERCurves' href property")
+    # # Create curves for der controls.
+    # for index, curve in enumerate(config.curves):
+    #     curve.href = hrefs.get_curve_href(index)
+    #     add_href(curve.href, curve)
 
-    _log.debug("Registering EndDevices")
-    end_devices = EndDevices()
-    # Initialize all the enddevices on startup or load them
-    # from storage if available
-    if config.server_mode == "enddevices_create_on_start":
-        # TODO load from storage if available.
-        for device_config in config.devices:
-            end_devices.initialize_device(device_config=device_config,
-                                          lfdi=tlsrepo.lfdi(device_config.id),
-                                          program_lists=config.program_lists)
-            if device_config.fsa_list:
-                for fsa in device_config.fsa_list:
-                    print(fsa)
-            print(end_devices.__all_end_devices__)
+    # _log.debug("Registering EndDevices")
+    # end_devices = EndDevices()
+    # # Initialize all the enddevices on startup or load them
+    # # from storage if available
+    # if config.server_mode == "enddevices_create_on_start":
+    #     # TODO load from storage if available.
+    #     for device_config in config.devices:
+    #         end_devices.initialize_device(device_config=device_config,
+    #                                       lfdi=tlsrepo.lfdi(device_config.id),
+    #                                       program_lists=config.programs)
+    #         if device_config.fsa_list:
+    #             for fsa in device_config.fsa_list:
+    #                 print(fsa)
+    #         print(end_devices.__all_end_devices__)
 
-    else:
-        # Initialize allowed connection only.
-        for cfg in config.devices:
-            end_devices.add_connectable(lfdi=tlsrepo.lfdi(cfg.id))
+    # else:
+    #     # Initialize allowed connection only.
+    #     for cfg in config.devices:
+    #         lfdi = tlsrepo.lfdi(cfg.id)
+    #         _log.debug(f"FOR dev_id: {cfg.id} LFDI is {lfdi}")
+    #         end_devices.add_connectable(lfdi=tlsrepo.lfdi(cfg.id))
 
-    return end_devices
+    # return end_devices
 
 
 @dataclass
 class EndDeviceData:
     index: int
-    mRID: str  # mrid for the device.
+    mRID: str    # mrid for the device.
     end_device: m.EndDevice
     registration: m.Registration
     device_capability: m.DeviceCapability = None
     der_programs: Optional[List[m.DERProgram]] = field(default_factory=list)
     ders: Optional[List[m.DER]] = field(default_factory=list)
-    function_set_assignments: Optional[List[m.FunctionSetAssignments]] = field(default_factory=list)
+    function_set_assignments: Optional[List[m.FunctionSetAssignments]] = field(
+        default_factory=list)
     device_information: Optional[m.DeviceInformation] = None
 
 
@@ -254,7 +243,8 @@ class EndDevices:
 
         return deepcopy(data)
 
-    def get_fsa_list(self, lfdi: Optional[Lfdi] = None,
+    def get_fsa_list(self,
+                     lfdi: Optional[Lfdi] = None,
                      edevid: Optional[int] = None) -> List[m.FunctionSetAssignments] | []:
         if not ((lfdi is not None) ^ edevid is not None):
             raise ValueError("Either lfdi or edevid must be passed not both.")
@@ -276,7 +266,7 @@ class EndDevices:
 
         """
         if not isinstance(lfdi, Lfdi):
-            lfdi = Lfdi(lfdi)
+            lfdi = Lfdi(lfdi.encode('ascii'))
 
         # Allowed to connect
         # if not self.allowed_to_connect(lfdi):
@@ -303,7 +293,9 @@ class EndDevices:
 
         """
         retvalue = None
-
+        # Handle bytes to str conversion because the lfdi_index_map uses str not bytes.
+        if not isinstance(lfdi, str):
+            lfdi = lfdi.decode('utf-8')
         index = self._lfdi_index_map.get(lfdi)
         if index is not None:
             retvalue = self.__all_end_devices__.get(index)
@@ -341,7 +333,8 @@ class EndDevices:
         new_id = self.__next_id__()
         self.__all_end_devices__[new_id] = end_device
         self._lfdi_index_map[end_device.lFDI] = new_id
-        end_device.href = hrefs.get_enddevice_href(new_id)
+        if not end_device.href:
+            end_device.href = hrefs.get_enddevice_href(new_id)
         add_href(end_device.href, end_device)
         return end_device.href
 
@@ -371,28 +364,30 @@ class EndDevices:
         enddevice_href = hrefs.get_enddevice_href(new_dev_number)
         end_device = m.EndDevice(
             href=enddevice_href,
-            deviceCategory=device_config.device_category_type.value,
+            deviceCategory=device_config.deviceCategory,
             lFDI=lfdi,
             sFDI=sfdi_from_lfdi(lfdi),
             RegistrationLink=m.RegistrationLink(hrefs.get_registration_href(new_dev_number)),
-            ConfigurationLink=m.ConfigurationLink(hrefs.get_configuration_href(new_dev_number))
-        )
+            ConfigurationLink=m.ConfigurationLink(hrefs.get_configuration_href(new_dev_number)))
         add_href(enddevice_href, end_device)
-
+        fsa_link_href = hrefs.get_fsa_list_href(end_device.href)
+        end_device.FunctionSetAssignmentsListLink = m.FunctionSetAssignmentsListLink(
+            href=fsa_link_href, all=len(device_config.fsa_list))
         if device_config.fsa_list:
-            fsa_link_href = hrefs.get_fsa_list_href(end_device.href)
-            end_device.FunctionSetAssignmentsListLink = m.FunctionSetAssignmentsListLink(href=fsa_link_href,
-                                                                                       all=len(device_config.fsa_list))
-            fsa_list = m.FunctionSetAssignmentsList(href=fsa_link_href, all=len(device_config.fsa_list))
+
+            fsa_list = m.FunctionSetAssignmentsList(href=fsa_link_href,
+                                                    all=len(device_config.fsa_list))
             for fsa_index, fsa_config in enumerate(device_config.fsa_list):
                 fsa_href = hrefs.get_fsa_href(fsa_list.href, fsa_index)
                 fsa = m.FunctionSetAssignments(href=fsa_href,
-                                             mRID=fsa_config.get("mRID"),
-                                             description=fsa_config.get("description"))
+                                               mRID=fsa_config.get("mRID"),
+                                               description=fsa_config.get("description"))
 
                 # TODO: Load other programs
-                fsa.DERProgramListLink = m.DERProgramListLink(href=hrefs.get_der_program_list(fsa_href))
-                fsa.DemandResponseProgramListLink = m.DemandResponseProgramListLink(href=hrefs.get_dr_program_list(fsa_href))
+                fsa.DERProgramListLink = m.DERProgramListLink(
+                    href=hrefs.get_der_program_list(fsa_href))
+                fsa.DemandResponseProgramListLink = m.DemandResponseProgramListLink(
+                    href=hrefs.get_dr_program_list(fsa_href))
                 # for pl in program_lists:
                 #     fsa.Pro
                 #     _log.debug(pl)
@@ -401,8 +396,7 @@ class EndDevices:
             add_href(fsa_link_href, fsa_list)
 
         add_href(hrefs.get_registration_href(new_dev_number),
-                 m.Registration(pIN=device_config.pin,
-                                pollRate=device_config.poll_rate))
+                 m.Registration(pIN=device_config.pin, pollRate=device_config.poll_rate))
         self.__all_end_devices__[new_dev_number] = end_device
         self._lfdi_index_map[lfdi] = new_dev_number
 
@@ -490,6 +484,8 @@ class EndDevices:
         #                     device_capability=device_capability)
         # self.__all_end_devices__[new_dev_number] = edd
         # self._lfdi_index_map[lfdi] = new_dev_number
+
+
 #        return get_href(end_device_href)
 
     def get(self, index: int) -> m.EndDevice:
@@ -530,13 +526,15 @@ class EndDevices:
             devices = [ed]
 
         # TODO Handle start, length list things.
-        dl = m.EndDeviceList(EndDevice=devices, all=len(devices), results=len(devices),
-                             href=hrefs.get_enddevice_list_href(), pollRate=900)
+        dl = m.EndDeviceList(EndDevice=devices,
+                             all=len(devices),
+                             results=len(devices),
+                             href=hrefs.get_enddevice_list_href(),
+                             pollRate=900)
         return dl
 
     def add_connectable(self, lfdi: Lfdi):
         self._lfdi_connection_allowed.add(lfdi)
-
 
 if __name__ == '__main__':
     print(get_groups())

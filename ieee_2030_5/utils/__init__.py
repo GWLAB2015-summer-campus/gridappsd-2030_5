@@ -53,8 +53,8 @@ def get_lfdi_from_cert(path: Path) -> t.Lfdi:
     # 160 / 4 == 40
     fp = tls.OpensslWrapper.tls_get_fingerprint_from_cert(path)
     fp = fp.replace(":", "")
-    lfdi = t.Lfdi(fp[:40].encode('ascii'))
-    return t.Lfdi(fp[:40].encode('ascii'))
+    lfdi = t.Lfdi(fp[:40])
+    return lfdi
 
 
 def get_sfdi_from_lfdi(lfdi: t.Lfdi) -> int:
@@ -66,9 +66,5 @@ def get_sfdi_from_lfdi(lfdi: t.Lfdi) -> int:
     Returns:
 
     """
-    assert len(lfdi) == 40, "lfdi must be 160-bits (40 hex characters) long."
-    hex_str = str(int(lfdi[:9], 16))
-    check_bit = 1
-    while not (int(hex_str[-2:]) + check_bit) % 10 == 0:
-        check_bit += 1
-    return int(hex_str + str(check_bit))
+    from ieee_2030_5.certs import sfdi_from_lfdi
+    return sfdi_from_lfdi(lfdi)
