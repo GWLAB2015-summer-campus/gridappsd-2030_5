@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 
 EDEV = "edev"
 DCAP = "dcap"
@@ -13,11 +14,13 @@ SDEV = "sdev"
 MSG = "msg"
 DER = "der"
 CURVE = "dc"
-PROGRAM = "program"
 RSPS = "rsps"
 LOG = "log"
 DERC = "derc"
 DDERC = "dderc"
+FSA = "fsa"
+DERP = "derp"
+DERCA = "derca"
 
 DEFAULT_DCAP_ROOT = f"/{DCAP}"
 DEFAULT_EDEV_ROOT = f"/{EDEV}"
@@ -28,9 +31,10 @@ DEFAULT_SELF_ROOT = f"/{SDEV}"
 DEFAULT_MESSAGE_ROOT = f"/{MSG}"
 DEFAULT_DER_ROOT = f"/{DER}"
 DEFAULT_CURVE_ROOT = f"/{CURVE}"
-DEFAULT_PROGRAM_ROOT = f"/{PROGRAM}"
 DEFAULT_RSPS_ROOT = f"/{RSPS}"
 DEFAULT_LOG_EVENT_ROOT = f"/{LOG}"
+DEFAULT_FSA_ROOT = f"/{FSA}"
+DEFAULT_DERP_ROOT = f"/{DERP}"
 
 SEP = "_"
 MATCH_REG = "[a-zA-Z0-9_]*"
@@ -38,6 +42,73 @@ MATCH_REG = "[a-zA-Z0-9_]*"
 # Used as a sentinal value when we only want the href of the root
 NO_INDEX = -1
 
+class DERSubType(Enum):
+    Capability = "dercap"
+    Settings = "derg"
+    Status = "ders"
+    Availability = "dera"
+    CurrentProgram = "derp"
+
+class FSASubType(Enum):
+    DERProgram = "derp"
+    
+class DERProgramSubType(Enum):
+    NoLink = 0
+    ActiveDERControlListLink = 1
+    DefaultDERControlLink = 2
+    DERControlListLink = 3
+    DERCurveListLink= 4
+    DERControlReplyTo = 5
+    
+class DERProgramHref(NamedTuple):
+    root: str
+    index: int
+    
+    @staticmethod
+    def parse(href: str):
+        parsed = href.split(SEP)
+        if len(parsed) == 1:
+            return DERProgramHref(parsed[0], NO_INDEX)
+        elif len(parsed) == 2:
+            return DERProgramHref(parsed[0], int(parsed[1]))
+    
+def der_program_parse(href: str) -> DERProgramHref:
+    return DERProgramHref.parse(href)
+    
+def der_program_href(index: int = NO_INDEX, sub: DERProgramSubType = DERProgramSubType.NoLink, subindex: int = NO_INDEX) -> str:
+    if index == NO_INDEX:
+        return DEFAULT_DERP_ROOT
+    
+    if sub == DERProgramSubType.NoLink:
+        return SEP.join([DEFAULT_DERP_ROOT, str(index)])
+    
+    if sub == DERProgramSubType.ActiveDERControlListLink:
+        if subindex == NO_INDEX:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index), DERCA])
+        else:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index), DERCA, str(subindex)])
+    
+    if sub == DERProgramSubType.DefaultDERControlLink:
+        if subindex == NO_INDEX:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index), DDERC])
+        else:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index), DDERC, str(subindex)])
+
+    if sub == DERProgramSubType.DERCurveListLink:
+        if subindex == NO_INDEX:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index),  CURVE])
+        else:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index), CURVE, str(subindex)])
+        
+    if sub == DERProgramSubType.DERControlListLink:
+        if subindex == NO_INDEX:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index),  DERC])
+        else:
+            return SEP.join([DEFAULT_DERP_ROOT, str(index), DERC, str(subindex)])
+        
+    if sub == DERProgramSubType.DERControlReplyTo:
+        return DEFAULT_RSPS_ROOT
+        
 
 @lru_cache()
 def get_server_config_href() -> str:
@@ -48,15 +119,87 @@ def get_server_config_href() -> str:
 def get_enddevice_list_href() -> str:
     return DEFAULT_EDEV_ROOT
 
-
-def get_curve_href(index: int) -> str:
+@lru_cache()
+def curve_href(index: int = NO_INDEX) -> str:
+    if index == NO_INDEX:
+        return DEFAULT_CURVE_ROOT
+    
     return SEP.join([DEFAULT_CURVE_ROOT, str(index)])
 
+@lru_cache()
+def fsa_href(index: int = NO_INDEX, edev_index: int=NO_INDEX):
+    if index == NO_INDEX and edev_index == NO_INDEX:
+        return DEFAULT_FSA_ROOT
+    elif index != NO_INDEX and edev_index == NO_INDEX:
+        return SEP.join([DEFAULT_FSA_ROOT, str(index)])
+    elif index == NO_INDEX and edev_index != NO_INDEX:
+        return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), FSA])
+    else:
+        return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), FSA, str(index)])
+    
+def der_href(index: int = NO_INDEX, fsa_index: int = NO_INDEX, edev_index: int = NO_INDEX):
+    if index == NO_INDEX and fsa_index == NO_INDEX and edev_index == NO_INDEX:
+        return DEFAULT_DER_ROOT
+    elif index != NO_INDEX and fsa_index == NO_INDEX and edev_index == NO_INDEX:
+        return SEP.join([DEFAULT_DER_ROOT, str(index)])
+    elif index == NO_INDEX and fsa_index != NO_INDEX and edev_index == NO_INDEX:
+        return SEP.join([DEFAULT_FSA_ROOT, str(fsa_index), DERP])
+    elif edev_index != NO_INDEX and fsa_index == NO_INDEX and index == NO_INDEX:
+        return SEP.join([DEFAULT_EDEV_ROOT, int(edev_index), FSA])
+    elif edev_index != NO_INDEX and fsa_index != NO_INDEX and index == NO_INDEX:
+        return SEP.join([DEFAULT_EDEV_ROOT, int(edev_index), FSA, int(fsa_index)])
+    else:
+        raise ValueError(f"index={index}, fsa_index={fsa_index}, edev_index={edev_index}")
+    
+def edev_der_href(edev_index: int, der_index: int = NO_INDEX) -> str:
+    if der_index == NO_INDEX:
+        return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), DER])
+    return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), DER, str(der_index)])
 
-def get_fsa_href(fsa_list_href: str, index: int) -> str:
-    return SEP.join([fsa_list_href, str(index)])
+class EdevHref(NamedTuple):
+    edev_index: int
+    der_index: int = NO_INDEX
+    der_sub: DERSubType = None
+    
+def edev_parse(path: str) -> EdevHref:
+    split_pth = path.split(SEP)
+    
+    if len(split_pth) == 1:
+        return EdevHref(NO_INDEX)
+    elif len(split_pth) == 2:
+        return EdevHref(int(split_pth[1]))
+    elif len(split_pth) == 3:
+        return EdevHref(int(split_pth[1]))
+    elif len(split_pth) == 4:
+        return EdevHref(int(split_pth[1]), int(split_pth[3]))
+    elif len(split_pth) == 5:
+        return EdevHref(int(split_pth[1]), int(split_pth[3]), split_pth[4])
 
-        
+class FSAHref(NamedTuple):
+    fsa_index: NO_INDEX
+    fsa_sub: FSASubType = None
+    
+def fsa_parse(path: str) -> FSAHref:
+    split_pth = path.split(SEP)
+    
+    if len(split_pth) == 1:
+        return FSAHref(NO_INDEX)
+    elif len(split_pth) == 2:
+        return FSAHref(int(split_pth[1]))
+    elif len(split_pth) == 3:
+        return FSAHref(int(split_pth[1]), fsa_sub=split_pth[2])
+    
+    raise ValueError("Invalid parsing path.")
+    
+def der_sub_href(edev_index: int, index: int = NO_INDEX, subtype: DERSubType = None):
+    if subtype is None and index == NO_INDEX:
+        return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), DER])
+    elif subtype is None:
+        return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), DER, str(index)])
+    else:
+        return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), DER, str(index), subtype.value])
+    
+@lru_cache()    
 def mirror_usage_point_href(mirror_usage_point_index: int = NO_INDEX):
     """Mirror Usage Point hrefs
     
@@ -192,8 +335,8 @@ def get_enddevice_href(edev_indx: int, subref: str = None) -> str:
 
 
 @lru_cache()
-def get_registration_href(edev_index: int) -> str:
-    return get_enddevice_href(edev_index, "reg")
+def registration_href(edev_index: int) -> str:
+    return SEP.join([DEFAULT_EDEV_ROOT, str(edev_index), "rg"])
 
 
 @lru_cache()
@@ -259,12 +402,12 @@ def get_program_href(index: int, subref: str = None):
         subref: used to specify a subsection in the program.
     """
     if index == NO_INDEX:
-        ref = f"{DEFAULT_PROGRAM_ROOT}"
+        ref = f"{DEFAULT_DERP_ROOT}"
     else:
         if subref is not None:
-            ref = f"{DEFAULT_PROGRAM_ROOT}{SEP}{index}{SEP}{subref}"
+            ref = f"{DEFAULT_DERP_ROOT}{SEP}{index}{SEP}{subref}"
         else:
-            ref = f"{DEFAULT_PROGRAM_ROOT}{SEP}{index}"
+            ref = f"{DEFAULT_DERP_ROOT}{SEP}{index}"
     return ref
 
 

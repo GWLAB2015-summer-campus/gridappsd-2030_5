@@ -10,9 +10,9 @@ from typing import Dict, List, Optional
 from flask import Response, request
 from werkzeug.exceptions import BadRequest
 
+import ieee_2030_5.adapters as adpt
 import ieee_2030_5.hrefs as hrefs
 import ieee_2030_5.models as m
-import ieee_2030_5.models.adapters as adpt
 from ieee_2030_5.data.indexer import get_href
 from ieee_2030_5.server.base_request import RequestOp
 from ieee_2030_5.server.uuid_handler import UUIDHandler
@@ -45,8 +45,8 @@ class MirrorUsagePointRequest(RequestOp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get(self, path) -> Response:
-        pth_info = request.environ['PATH_INFO']
+    def get(self) -> Response:
+        pth_info = request.path
 
         if not pth_info.startswith(hrefs.DEFAULT_MUP_ROOT):
             raise ValueError(f"Invalid path for {self.__class__} {request.path}")
@@ -67,7 +67,7 @@ class MirrorUsagePointRequest(RequestOp):
             return Response("Not Found", status=404)
         
 
-    def post(self, path) -> Response:
+    def post(self) -> Response:
         xml = request.data.decode('utf-8')
         data = xml_to_dataclass(request.data.decode('utf-8'))
         data_type = type(data)
@@ -75,7 +75,7 @@ class MirrorUsagePointRequest(RequestOp):
             raise BadRequest()
 
         pth_info = request.path
-        pths = pth_info.split("/")
+        pths = pth_info.split(hrefs.SEP)
         if len(pths) == 1 and data_type is not m.MirrorUsagePoint:
             # Check to make sure not a new mrid
             raise BadRequest("Must post MirrorUsagePoint to top level only")
@@ -91,4 +91,5 @@ class MirrorUsagePointRequest(RequestOp):
         if isinstance(result, Error):
             return Response(result.args[1], status=500)
         # Note response to the post is different due to added endpoint.
-        return Response(headers={'Location': result.location}, status=result.status)
+        
+        return Response(headers={'Location': result.location}, status=result.status if isinstance(result.status, int) else result.status.value)

@@ -4,8 +4,8 @@ from typing import Container, List, Optional, Sized, Tuple
 
 import ieee_2030_5.hrefs as hrefs
 import ieee_2030_5.models as m
+from ieee_2030_5.adapters import ReturnCode
 from ieee_2030_5.data.indexer import add_href, get_href
-from ieee_2030_5.models.adapters import ReturnCode
 
 _log = logging.getLogger(__name__)
 
@@ -123,7 +123,12 @@ class _UsagePointContainer(Container, Sized):
         return next(filter(lambda x: x.mRID == mRID, [y.usage_point for y in self.__usage_points__]))
     
     def _fetch_wrapper_by_mRID(self, mRID: str) -> _UsagePointWrapper:
-        return next(filter(lambda x: x.usage_point.mRID == mRID, self.__usage_points__))
+        print(self.__usage_points__)
+        for x in self.__usage_points__:
+            if x.usage_point.mRID == mRID:
+                return x
+        
+        raise StopIteration()
     
     def _fetch_wrapper_by_href(self, href: str) -> _UsagePointWrapper:
         return next(filter(lambda x: x.usage_point.href == href, self.__usage_points__))
@@ -230,6 +235,9 @@ class _MirrorUsagePointAdapter:
         #    In addition, we use this as the base url for the upt url that is returned after
         #    the reading is created.
         try:
+            #pths = href.split(hrefs.SEP)
+            #mup = self.__mirror_usage_points__[pths[1]]
+            href = href.replace(hrefs.MUP, hrefs.UTP)
             upt = self.__upt_container__.fetch_by_href(href)
             assert upt
             result = self.__upt_container__.create_or_replace_reading(upt, data)
