@@ -47,12 +47,19 @@ class TLSRepository:
             openssl_cnffile_template = Path(openssl_cnffile_template).expanduser().resolve()
             if not openssl_cnffile_template.exists():
                 raise ValueError(f"openssl_cnffile does not exist {openssl_cnffile_template}")
+            
         self._repo_dir = repo_dir
         self._certs_dir = repo_dir.joinpath("certs")
         self._private_dir = repo_dir.joinpath("private")
         self._combined_dir = repo_dir.joinpath("combined")
         self._openssl_cnf_file = self._repo_dir.joinpath(openssl_cnffile_template.name)
-        self._common_names = {serverhost: serverhost}
+        if ":" in serverhost:
+            self._serverhost, self._serverport = serverhost.split(":")
+        
+        if proxyhost is not None and ":" in proxyhost:
+            self._proxyhost, self._proxyport = proxyhost.split(":")
+            
+        self._common_names = {serverhost: self._serverhost}
         if proxyhost:
             self._common_names[proxyhost] = proxyhost
         self._client_common_name_set = set()
@@ -94,8 +101,9 @@ class TLSRepository:
         self._openssl_cnf_file.write_text(new_contents)
         self._ca_key = self._private_dir.joinpath("ca.pem")
         self._ca_cert = self._certs_dir.joinpath("ca.pem")
-        self._serverhost = serverhost
-        self._proxyhost = proxyhost
+        # self._serverhost = serverhost
+        # self._proxyhost = proxyhost
+    
 
         self._tls: TLSWrap = OpensslWrapper(self._openssl_cnf_file)
         self._cert_paths: List[Path] = []
