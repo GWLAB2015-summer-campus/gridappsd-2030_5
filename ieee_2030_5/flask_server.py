@@ -35,6 +35,7 @@ from ieee_2030_5.server.server_constructs import EndDevices, get_groups
 from ieee_2030_5.server.server_endpoints import ServerEndpoints
 
 _log = logging.getLogger(__file__)
+logging.getLogger("watchdog.observers.inotify_buffer").setLevel(logging.WARNING)
 
 
 class LogProtocolHandler(logging.Handler):
@@ -200,7 +201,7 @@ def __build_ssl_context__(tlsrepo: TLSRepository) -> ssl.SSLContext:
     )
     # change this to ssl.CERT_REQUIRED during deployment.
     # TODO if required we have to have one all the time on the server.
-    ssl_context.verify_mode = ssl.CERT_OPTIONAL    # ssl.CERT_REQUIRED
+    ssl_context.verify_mode = ssl.CERT_REQUIRED
     return ssl_context
 
 
