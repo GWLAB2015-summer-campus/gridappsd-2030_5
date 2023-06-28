@@ -9,6 +9,7 @@ from session import backend_session, endpoint
 
 import ieee_2030_5.models as m
 from ieee_2030_5.utils import xml_to_dataclass
+from . data 
 
 resp = backend_session.get(endpoint("enddevices"))
 enddevices: m.EndDeviceList = xml_to_dataclass(resp.text)
