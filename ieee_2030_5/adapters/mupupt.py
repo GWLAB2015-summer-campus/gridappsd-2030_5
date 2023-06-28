@@ -4,7 +4,7 @@ from typing import Container, List, Optional, Sized, Tuple
 
 import ieee_2030_5.hrefs as hrefs
 import ieee_2030_5.models as m
-from ieee_2030_5.adapters import BaseAdapter, ReturnCode
+from ieee_2030_5.adapters import Adapter, BaseAdapter, ReturnCode
 from ieee_2030_5.data.indexer import add_href, get_href
 
 _log = logging.getLogger(__name__)
@@ -13,6 +13,13 @@ __all__: List[str] = [
     "MirrorUsagePointAdapter"
 ]
 
+MirrorUsagePointAdapter = Adapter[m.MirrorUsagePoint](str(hrefs.MirrorUsagePointHref()), generic_type=m.MirrorUsagePoint)
+UsagePointAdapter = Adapter[m.UsagePoint](str(hrefs.UsagePointHref()), generic_type=m.UsagePoint)
+
+# def initialize_mirror_usage_point_adapter(sender):
+#     """ Initializes the MirrorUsagePointAdapter from the storage. """
+#     MirrorUsagePointAdapter.initialize_from_storage()
+    
 @dataclass
 class _UsagePointWrapper:
     usage_point: m.UsagePoint   
@@ -181,7 +188,8 @@ class MeterReadingContainer(Container):
     
     def __contains__(self, __x: object) -> bool:
         return list(filter(lambda x: x.mRID == __x.mRID, self.__meter_readings__))
-    
+   
+
 class _MirrorUsagePointAdapter:
     
     def __init__(self):
@@ -264,7 +272,7 @@ class _MirrorUsagePointAdapter:
         try:
             #pths = href.split(hrefs.SEP)
             #mup = self.__mirror_usage_points__[pths[1]]
-            href = href.replace(hrefs.MUP, hrefs.UTP)
+            href = href.replace(hrefs.MUP, hrefs.UPT)
             upt = self.__upt_container__.fetch_by_href(href)
             assert upt
             result = self.__upt_container__.create_or_replace_reading(upt, data)
@@ -385,7 +393,7 @@ class _MirrorUsagePointAdapter:
 
         return mupl
     
-MirrorUsagePointAdapter = _MirrorUsagePointAdapter()
+#MirrorUsagePointAdapter = _MirrorUsagePointAdapter()
 
 
 
