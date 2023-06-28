@@ -38,6 +38,7 @@ gridappsd-cim-lab = {extras = ["gridappsd-python"], version = "^0.11.230210"}
 gridappsd-python = "^2.7.230209"
 blinker = "^1.5"
 nicegui = "^1.2.1"
+xsdata-pydantic = "^22.10"
 
 
 [tool.poetry.group.dev.dependencies]

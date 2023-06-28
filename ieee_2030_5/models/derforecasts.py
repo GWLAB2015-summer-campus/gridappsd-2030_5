@@ -1,6 +1,6 @@
 from __future__ import annotations
-
-from dataclasses import dataclass, field
+from dataclasses import field
+from pydantic.dataclasses import dataclass
 from typing import List, Optional
 from ieee_2030_5.models.sep import (
     DER,
