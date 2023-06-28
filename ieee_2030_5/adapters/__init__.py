@@ -185,6 +185,16 @@ class Adapter(Generic[T]):
             setattr(item, 'href', hrefs.SEP.join([self._href_prefix, str(self._current_index + 1)]))
         self._current_index += 1
         self._item_list[self._current_index] = item
+        
+    def replace(self, item: T, index: int):
+                
+        if not isinstance(item, self._generic_type):
+            raise ValueError(f"Item {item} is not of type {self._generic_type}")
+        
+        if not hasattr(item, 'href'):
+            raise ValueError(f"Item {item} does not have href")
+        
+        self._item_list[index] = item
     
     def fetch_all(self, container: Optional[D] = None, start: int = 0, after: int = 0, limit: int = 1) -> D:
 
@@ -236,7 +246,7 @@ class Adapter(Generic[T]):
         return self._item_list[index]
     
     def fetch_by_mrid(self, mRID: str):
-        for item in self._item_list:
+        for item in self._item_list.values():
             if not hasattr(item, 'mRID'):
                 raise ValueError(f"Item of {type(T)} does not have mRID property")
             if item.mRID == mRID:
@@ -369,4 +379,4 @@ from ieee_2030_5.adapters.der import (DERControlAdapter, DERCurveAdapter,
                                       DERProgramAdapter)
 from ieee_2030_5.adapters.enddevices import EndDeviceAdapter
 from ieee_2030_5.adapters.log import LogAdapter
-from ieee_2030_5.adapters.mupupt import MirrorUsagePointAdapter
+from ieee_2030_5.adapters.mupupt import MirrorUsagePointAdapter, UsagePointAdapter
