@@ -21,106 +21,124 @@ from session import backend_session, endpoint
 
 import ieee_2030_5.models as m
 from ieee_2030_5.utils import dataclass_to_xml, uuid_2030_5, xml_to_dataclass
+from data import get_der_program_list, get_end_device, get_end_device_list
 
 tasks = []
 
-debug = False
 
-def _get_active(program):
-    resp = backend_session.get(endpoint(f"derp/{program}/derca"))
-    active_txt.value = resp.text
-    
-def _get_all_active():
-    resp = backend_session.get(endpoint(f"derp"))
-    derps: m.DERProgramList = xml_to_dataclass(resp.text)
-    
-    value = ''
-    for index, derps in enumerate(derps.DERProgram):
-        resp = backend_session.get(endpoint(f"derp/{index}/derca"))
-        active: m.DERControlList = xml_to_dataclass(resp.text)
-        if active:
-            value += f"\nProgram {index}\n"
-            value += f"{active}"
-    active_txt.value = value
-    
-def _submit_control_event(program, control):
-    resp = backend_session.post(endpoint(f"derp/{program}/derc"), 
-                                data=control, 
-                                headers={"Content-Type": "application/xml"})
-    _get_all_active()
 
-def _show_text_area(label, value, only_when_debug=True):
-    if debug == only_when_debug:
-        ui.textarea(label=label, value=value).props('rows=20').props('cols=120').classes('w-full, h-80')
-    
-def get_control_event_default():
-    derbase = m.DERControlBase(opModConnect=True, opModEnergize=False, opModFixedPFInjectW=80)
-    
-    time_plus_10 = int(time.mktime((datetime.utcnow() + timedelta(seconds=10)).timetuple()))
+class ApplicationState:
+    end_device_index_selected: int = -1
 
-    derc = m.DERControl(mRID=uuid_2030_5(),
-                description="New DER Control Event",                
-                DERControlBase=derbase,
-                interval=m.DateTimeInterval(duration=20, start=time_plus_10))
-                            
-
-                # setESLowVolt=0.917,
-                # setESHighVolt=1.05,
-                # setESLowFreq=59.5,
-                # setESHighFreq=60.1,
-                # setESRampTms=300,
-                # setESRandomDelay=0,
-                #DERControlBase=derbase)
-    # dderc = m.DefaultDERControl(href=hrefs.get_dderc_href(),
-    #                             mRID=str(uuid.uuid4()),
-    #                             description="Default DER Control Mode",
-    #                             setESDelay=300,
-    #                             setESLowVolt=0.917,
-    #                             setESHighVolt=1.05,
-    #                             setESLowFreq=59.5,
-    #                             setESHighFreq=60.1,
-    #                             setESRampTms=300,
-    #                             setESRandomDelay=0,
-    #                             DERControlBase=derbase)
-    return dataclass_to_xml(derc)
-
-resp = backend_session.get(endpoint('derp'))
-derps: m.DERProgramList = xml_to_dataclass(resp.text)
-resp = backend_session.get(endpoint("enddevices"))
-enddevices: m.EndDeviceList = xml_to_dataclass(resp.text)
-
-with_ders = filter(lambda x: x.DERListLink is not None, enddevices.EndDevice)
-
-print([x for x in with_ders])
 
 with ui.column():
-    ui.label(f"# End Devices: {len(enddevices.EndDevice)}")
-    _show_text_area("enddevices", dataclass_to_xml(enddevices))
-    _show_text_area("derps", dataclass_to_xml(derps))
+    ui.select([{ index: x.href} for index, x in enumerate(get_end_device_list().EndDevice)], label="End Device").bind_value(ApplicationState, "end_device_index_selected")
+
+
+with ui.row():
+    ui.label().bind_text(ApplicationState, "end_device_index_selected")
+    #ui.number().bind_value(ApplicationState, "end_device_index_selected")
+    #ui.label(f"Application_end_device_index_selected, {ApplicationState.end_device_index_selected}")
+
+with ui.row():
     
-    ui.label(f"# Derps: {len(derps.DERProgram)}")
-    ui.label("FSA")
-    for ed_index, ed in enumerate(enddevices.EndDevice):
-        resp = backend_session.get(endpoint(f"edev/{ed_index}/fsa"))
-        fsalist:m.FunctionSetAssignmentsList = xml_to_dataclass(resp.text)
-        _show_text_area(f"edev/{ed_index}/fsa", resp.text)
+
+
+# def _get_active(program):
+#     resp = backend_session.get(endpoint(f"derp/{program}/derca"))
+#     active_txt.value = resp.text
+    
+# def _get_all_active():
+#     resp = backend_session.get(endpoint(f"derp"))
+#     derps: m.DERProgramList = xml_to_dataclass(resp.text)
+    
+#     value = ''
+#     for index, derps in enumerate(derps.DERProgram):
+#         resp = backend_session.get(endpoint(f"derp/{index}/derca"))
+#         active: m.DERControlList = xml_to_dataclass(resp.text)
+#         if active:
+#             value += f"\nProgram {index}\n"
+#             value += f"{active}"
+#     active_txt.value = value
+    
+# def _submit_control_event(program, control):
+#     resp = backend_session.post(endpoint(f"derp/{program}/derc"), 
+#                                 data=control, 
+#                                 headers={"Content-Type": "application/xml"})
+#     _get_all_active()
+
+# def _show_text_area(label, value, only_when_debug=True):
+#     if debug == only_when_debug:
+#         ui.textarea(label=label, value=value).props('rows=20').props('cols=120').classes('w-full, h-80')
+    
+# def get_control_event_default():
+#     derbase = m.DERControlBase(opModConnect=True, opModEnergize=False, opModFixedPFInjectW=80)
+    
+#     time_plus_10 = int(time.mktime((datetime.utcnow() + timedelta(seconds=10)).timetuple()))
+
+#     derc = m.DERControl(mRID=uuid_2030_5(),
+#                 description="New DER Control Event",                
+#                 DERControlBase=derbase,
+#                 interval=m.DateTimeInterval(duration=20, start=time_plus_10))
+                            
+
+#                 # setESLowVolt=0.917,
+#                 # setESHighVolt=1.05,
+#                 # setESLowFreq=59.5,
+#                 # setESHighFreq=60.1,
+#                 # setESRampTms=300,
+#                 # setESRandomDelay=0,
+#                 #DERControlBase=derbase)
+#     # dderc = m.DefaultDERControl(href=hrefs.get_dderc_href(),
+#     #                             mRID=str(uuid.uuid4()),
+#     #                             description="Default DER Control Mode",
+#     #                             setESDelay=300,
+#     #                             setESLowVolt=0.917,
+#     #                             setESHighVolt=1.05,
+#     #                             setESLowFreq=59.5,
+#     #                             setESHighFreq=60.1,
+#     #                             setESRampTms=300,
+#     #                             setESRandomDelay=0,
+#     #                             DERControlBase=derbase)
+#     return dataclass_to_xml(derc)
+
+# resp = backend_session.get(endpoint('derp'))
+# derps: m.DERProgramList = xml_to_dataclass(resp.text)
+# resp = backend_session.get(endpoint("enddevices"))
+# enddevices: m.EndDeviceList = xml_to_dataclass(resp.text)
+
+# with_ders = filter(lambda x: x.DERListLink is not None, enddevices.EndDevice)
+
+# print([x for x in with_ders])
+
+# with ui.column():
+#     ui.label(f"# End Devices: {len(enddevices.EndDevice)}")
+#     _show_text_area("enddevices", dataclass_to_xml(enddevices))
+#     _show_text_area("derps", dataclass_to_xml(derps))
+    
+#     ui.label(f"# Derps: {len(derps.DERProgram)}")
+#     ui.label("FSA")
+#     for ed_index, ed in enumerate(enddevices.EndDevice):
+#         resp = backend_session.get(endpoint(f"edev/{ed_index}/fsa"))
+#         fsalist:m.FunctionSetAssignmentsList = xml_to_dataclass(resp.text)
+#         _show_text_area(f"edev/{ed_index}/fsa", resp.text)
         
-        for fsa_index, fsa in enumerate(fsalist.FunctionSetAssignments):
-            resp = backend_session.get(endpoint(f"edev/{ed_index}/fsa/{fsa_index}"))
-            _show_text_area(f"edev/{ed_index}/fsa/{fsa_index}", resp.text)
+#         for fsa_index, fsa in enumerate(fsalist.FunctionSetAssignments):
+#             resp = backend_session.get(endpoint(f"edev/{ed_index}/fsa/{fsa_index}"))
+#             _show_text_area(f"edev/{ed_index}/fsa/{fsa_index}", resp.text)
             
-            resp = backend_session.get(endpoint(f"edev/{ed_index}/fsa/{fsa_index}/derp"))
-            _show_text_area(f"edev/{ed_index}/fsa/{fsa_index}/derp", resp.text)
+#             resp = backend_session.get(endpoint(f"edev/{ed_index}/fsa/{fsa_index}/derp"))
+#             _show_text_area(f"edev/{ed_index}/fsa/{fsa_index}/derp", resp.text)
             
-    select_list = {index: value.description for index, value in enumerate(derps.DERProgram)}
+#     select_list = {index: value.description for index, value in enumerate(derps.DERProgram)}
     
-    program = ui.select(options=select_list, value=list(select_list.keys())[0]).classes('w-full')
-    xml_text = ui.textarea(label="xml", value=get_control_event_default()).props('rows=20').props('cols=120').classes('w-full, h-80')
+#     program = ui.select(options=select_list, value=list(select_list.keys())[0]).classes('w-full')
+#     xml_text = ui.textarea(label="xml", value=get_control_event_default()).props('rows=20').props('cols=120').classes('w-full, h-80')
         
-    ui.button("Assign DER Control Event", on_click=lambda: _submit_control_event(program.value, xml_text.value)).props('no-caps')
-    ui.button("Show Active", on_click=lambda: _get_all_active()).props('no-caps')
+#     ui.button("Assign DER Control Event", on_click=lambda: _submit_control_event(program.value, xml_text.value)).props('no-caps')
+#     ui.button("Show Active", on_click=lambda: _get_all_active()).props('no-caps')
     
-    active_txt = ui.textarea(label="Active").props("rows=20").props('cols=120').classes('w-full, h-80')
+#    active_txt = ui.textarea(label="Active").props("rows=20").props('cols=120').classes('w-full, h-80')
 #ui.select(options=[d for d in with_ders])
 
 # def add_my_task(task):
