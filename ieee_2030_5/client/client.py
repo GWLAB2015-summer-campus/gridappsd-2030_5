@@ -14,6 +14,7 @@ from typing import Dict, Optional, Tuple
 import werkzeug.middleware.lint
 import xsdata
 
+from ieee_2030_5.utils import dataclass_to_xml, xml_to_dataclass
 import ieee_2030_5.models as m
 import ieee_2030_5.utils as utils
 import ieee_2030_5.utils.tls_wrapper as tls
@@ -258,6 +259,107 @@ def __release_clients__():
 
 atexit.register(__release_clients__)
 
+
+class AdminClient:
+    def __init__(self, 
+                 cafile: PathLike,
+                 server_hostname: str,
+                 keyfile: PathLike,
+                 certfile: PathLike,
+                 server_ssl_port: Optional[int] = 443,
+                 debug: bool=False, 
+                 **kwargs):
+        
+        self._debug = debug
+        if ":" in server_hostname:
+            self._server_hostname, self._server_port = server_hostname.split(":")
+        else:
+            self._server_hostname = server_hostname
+            self._server_port = server_ssl_port
+            
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        #context.load_cert_chain(certfile=str(certfile), keyfile=str(keyfile))
+        context.load_verify_locations(cafile=str(cafile))
+        context.load_cert_chain(certfile=str(certfile), keyfile=str(keyfile))
+        
+        self._connection = HTTPSConnection(host=self._server_hostname, port=self._server_port, context=context)
+        
+        #self._session.cert = (str(keyfile), str(certfile))
+        #self._session.verify = str(cafile)
+        
+    def get_url(self, from_admin:str, index: Optional[int] = None):
+        if from_admin.startswith("/"):
+            from_admin = from_admin[1:]
+        if index is not None:
+            from_admin = f"{from_admin}/{index}"
+        return f"/admin/{from_admin}"
+    
+    def __get__(self, url: str, body=None, headers: dict = None):
+        if headers is None:
+            headers = {"Connection": "keep-alive", "keep-alive": "timeout=30, max=1000"}
+
+        if self._debug:
+            print(f"----> GET REQUEST")
+            print(f"url: {url} body: {body}")
+        self._connection.request(method="GET", url=url, body=body, headers=headers)
+        response = self._connection.getresponse()
+        response_data = response.read().decode("utf-8")
+        print(response.headers)
+
+        response_obj = None
+        try:
+            response_obj = utils.xml_to_dataclass(response_data)
+            resp_xml = xml.dom.minidom.parseString(response_data)
+            if resp_xml and self._debug:
+                print(f"<---- GET RESPONSE")
+                print(f"{response_data}")  # toprettyxml()}")
+
+        except xsdata.exceptions.ParserError as ex:
+            if self._debug:
+                print(f"<---- GET RESPONSE")
+                print(f"{response_data}")
+            response_obj = response_data
+
+        return response_obj
+
+    def __close__(self):
+        self._connection.close()
+        self._connection = None
+        
+    def get_enddevice_list(self, index: Optional[int] = None) -> m.EndDeviceList:
+        url = self.get_url("enddevices", index)        
+        return self.__get__(url)
+    
+    def get_enddevice(self, index: int) -> m.EndDevice:
+        ed_list = self.get_enddevice_list()
+        return ed_list.EndDevice[index]
+    
+    def get_der_list(self, edev_index: int) -> m.DERList:
+        url = self.get_url(f"edev/{edev_index}/der")
+        return self.__get__(url)
+    
+    def get_der(self, edev_index: int, der_index: int) -> m.DER:
+        url = self.get_url(f"edev/{edev_index}/der/{der_index}")
+        return self.__get__(url)
+    
+    def get_der_program_list(self) -> m.DERProgramList:
+        uri = self.get_url("derp")
+        return self.__get__(uri)
+    
+    def get_der_program(self, index: int) -> m.DERProgram:
+        return self.get_der_program_list().DERProgram[index]
+    
+    def get_current_derp(self, edev_index: int, der_index: int) -> m.DERProgramList:
+        url = self.get_url(f"edev/{edev_index}/der/{der_index}/current_derp")
+        return self.__get__(url)
+    
+    def get_usage_point_list(self) -> m.UsagePointList:
+        url = self.get_url("upt")
+        return self.__get__(url)
+    
+    def get_mirror_usage_point_list(self) -> m.MirrorUsagePointList:
+        url = self.get_url("mup")
+        return self.__get__(url)
 #
 # ssl_context = ssl.create_default_context(cafile=str(SERVER_CA_CERT))
 #
@@ -272,47 +374,57 @@ atexit.register(__release_clients__)
 
 if __name__ == '__main__':
     SERVER_CA_CERT = Path("~/tls/certs/ca.pem").expanduser().resolve()
-    KEY_FILE = Path("~/tls/private/dev1.pem").expanduser().resolve()
-    CERT_FILE = Path("~/tls/certs/dev1.pem").expanduser().resolve()
+    KEY_FILE = Path("~/tls/private/admin.pem").expanduser().resolve()
+    CERT_FILE = Path("~/tls/certs/admin.pem").expanduser().resolve()
+    
+    admin = AdminClient(cafile=SERVER_CA_CERT, certfile=CERT_FILE, keyfile=KEY_FILE, 
+                        server_hostname="full20305", server_ssl_port=8443, debug=True)
+    
+    edl = admin.get_enddevice_list()
+    print(f"End devices: {admin.get_enddevice_list()}")
+    
+    # SERVER_CA_CERT = Path("~/tls/certs/ca.pem").expanduser().resolve()
+    # KEY_FILE = Path("~/tls/private/dev1.pem").expanduser().resolve()
+    # CERT_FILE = Path("~/tls/certs/dev1.pem").expanduser().resolve()
 
-    headers = {'Connection': 'Keep-Alive',
-               'Keep-Alive': "max=1000,timeout=30"}
+    # headers = {'Connection': 'Keep-Alive',
+    #            'Keep-Alive': "max=1000,timeout=30"}
 
-    h = IEEE2030_5_Client(cafile=SERVER_CA_CERT,
-                          server_hostname="127.0.0.1",
-                          server_ssl_port=8443,
-                          keyfile=KEY_FILE,
-                          certfile=CERT_FILE,
-                          debug=True)
-    # h2 = IEEE2030_5_Client(cafile=SERVER_CA_CERT, server_hostname="me.com", ssl_port=8000,
-    #                        keyfile=KEY_FILE, certfile=KEY_FILE)
-    dcap = h.device_capability()
-    end_devices = h.end_devices()
+    # h = IEEE2030_5_Client(cafile=SERVER_CA_CERT,
+    #                       server_hostname="127.0.0.1",
+    #                       server_ssl_port=8443,
+    #                       keyfile=KEY_FILE,
+    #                       certfile=CERT_FILE,
+    #                       debug=True)
+    # # h2 = IEEE2030_5_Client(cafile=SERVER_CA_CERT, server_hostname="me.com", ssl_port=8000,
+    # #                        keyfile=KEY_FILE, certfile=KEY_FILE)
+    # dcap = h.device_capability()
+    # end_devices = h.end_devices()
 
-    if not end_devices.all > 0:
-        print("registering end device.")
-        ed_href = h.register_end_device()
-    my_ed = h.end_devices()
-    my_fsa = h.function_set_assignment()
-    my_program = h.der_program()
-
-
-    # ed = h.end_devices()[0]
-    # resp = h.request("/dcap", headers=headers)
-    # print(resp)
-    # resp = h.request("/dcap", headers=headers)
-    # print(resp)
-    #dcap = h.device_capability()
-    # get device list
-    #dev_list = h.request(dcap.EndDeviceListLink.href).EndDevice
-
-    #ed = h.request(dev_list[0].href)
-    #print(ed)
-    #
-    # print(dcap.mirror_usage_point_list_link)
-    # # print(h.request(dcap.mirror_usage_point_list_link.href))
-    # print(h.request("/dcap", method="post"))
+    # if not end_devices.all > 0:
+    #     print("registering end device.")
+    #     ed_href = h.register_end_device()
+    # my_ed = h.end_devices()
+    # my_fsa = h.function_set_assignment()
+    # my_program = h.der_program()
 
 
-    # tl = h.timelink()
-    #print(IEEE2030_5_Client.clients)
+    # # ed = h.end_devices()[0]
+    # # resp = h.request("/dcap", headers=headers)
+    # # print(resp)
+    # # resp = h.request("/dcap", headers=headers)
+    # # print(resp)
+    # #dcap = h.device_capability()
+    # # get device list
+    # #dev_list = h.request(dcap.EndDeviceListLink.href).EndDevice
+
+    # #ed = h.request(dev_list[0].href)
+    # #print(ed)
+    # #
+    # # print(dcap.mirror_usage_point_list_link)
+    # # # print(h.request(dcap.mirror_usage_point_list_link.href))
+    # # print(h.request("/dcap", method="post"))
+
+
+    # # tl = h.timelink()
+    # #print(IEEE2030_5_Client.clients)

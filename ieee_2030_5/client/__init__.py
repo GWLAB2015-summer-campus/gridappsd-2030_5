@@ -1,5 +1,6 @@
-from ieee_2030_5.client.client import IEEE2030_5_Client
+from ieee_2030_5.client.client import IEEE2030_5_Client, AdminClient
 
 __all__ = [
-    'IEEE2030_5_Client'
+    'IEEE2030_5_Client',
+    'AdminClient'
 ]

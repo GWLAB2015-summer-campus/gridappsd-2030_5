@@ -2,6 +2,7 @@ import json
 from typing import Optional
 
 from flask import Flask, Response, render_template, request
+from ieee_2030_5.adapters.mupupt import MirrorUsagePointAdapter, UsagePointAdapter
 
 import ieee_2030_5.hrefs as hrefs
 import ieee_2030_5.models as m
@@ -44,6 +45,9 @@ class AdminEndpoints:
         app.add_url_rule("/admin/derp/<int:derp_index>/derca",  methods=['GET'], view_func=self._admin_derp_derca)
         app.add_url_rule("/admin/derp/<int:derp_index>/dderc",  methods=['GET', 'PUT'], view_func=self._admin_derp_derc)
         app.add_url_rule("/admin/derp",  methods=['GET', 'POST'], view_func=self._admin_derp)
+        
+        app.add_url_rule("/admin/mup", methods=['GET'], view_func=self._admin_mup)
+        app.add_url_rule("/admin/upt", methods=['GET'], view_func=self._admin_upt)
         #app.add_url_rule("/admin/derp/<int:index>",  methods=['GET', 'POST'], view_func=self._derp)
         #app.add_url_rule("/admin/derp/<int:index>/derc", methods=['GET', 'POST'], view_func=self._derp_derc)
         
@@ -54,6 +58,12 @@ class AdminEndpoints:
             
             
         #fsa = FSAAdapter.fetch_by_end_device(edevid)
+    def _admin_upt(self) -> Response:
+        return Response(dataclass_to_xml(UsagePointAdapter.fetch_all(m.UsagePointList())))
+        
+    def _admin_mup(self) -> Response:
+        # MirrorUsagePointAdapter.fetch_all() does not inherit form Adapter like EndDeviceAdapter does
+        return Response(dataclass_to_xml(MirrorUsagePointAdapter.fetch_all(m.MirrorUsagePointList())))
         
     def _admin_edev(self) -> Response:
         return Response(dataclass_to_xml(EndDeviceAdapter.fetch_all(m.EndDeviceList())))
