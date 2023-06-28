@@ -7,7 +7,7 @@ from typing import List, NamedTuple, Optional
 
 EDEV = "edev"
 DCAP = "dcap"
-UTP = "upt"
+UPT = "upt"
 MUP = "mup"
 DRP = "drp"
 SDEV = "sdev"
@@ -38,7 +38,7 @@ END_DEVICE_INFORMATION = "di"
 
 DEFAULT_DCAP_ROOT = f"/{DCAP}"
 DEFAULT_EDEV_ROOT = f"/{EDEV}"
-DEFAULT_UPT_ROOT = f"/{UTP}"
+DEFAULT_UPT_ROOT = f"/{UPT}"
 DEFAULT_MUP_ROOT = f"/{MUP}"
 DEFAULT_DRP_ROOT = f"/{DRP}"
 DEFAULT_SELF_ROOT = f"/{SDEV}"
@@ -294,6 +294,9 @@ class UsagePointHref:
     meter_reading_index: int= NO_INDEX
     reading_set_index: int= NO_INDEX
     reading_index: int= NO_INDEX
+    include_mr: bool = False
+    include_rs: bool = False
+    include_r: bool = False
     
     @staticmethod
     def parse(href: str) -> UsagePointHref:
@@ -304,6 +307,57 @@ class UsagePointHref:
         if len(items) == 2:
             return UsagePointHref(usage_point_index = int(items[1]))
 
+        if len(items) == 3:
+            assert items[2] == "mr"
+            return UsagePointHref(int(items[1]), include_mr=True)
+        
+        if len(items == 4):
+            assert items[2] == "mr"
+            return UsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]))
+        
+        if len(items) == 5:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            return UsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True)
+        
+        if len(items) == 6:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            return UsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]))
+        
+        if len(items) == 7:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            assert items[6] == "r"
+            return UsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]), include_r=True)
+        
+        if len(items) == 8:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            assert items[6] == "r"
+            return UsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]), include_r=True, meter_reading_index=int(items[7]))    
+        
+    def as_href(self) -> str:
+        if self.reading_index != NO_INDEX:
+            return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index), "r", str(self.reading_index)])
+        elif self.include_r:
+            return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index), "r"])
+        elif self.reading_set_index != NO_INDEX:
+            return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index)])
+        elif self.include_rs:
+            return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index), "mr", str(self.meter_reading_list_index), "rs"])
+        elif self.meter_reading_list_index != NO_INDEX:
+            return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index), "mr", str(self.meter_reading_list_index)])
+        elif self.include_mr:
+            return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index), "mr"])
+        elif self.usage_point_index != NO_INDEX:
+            return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index)])
+        else:
+            return DEFAULT_UPT_ROOT
+    
+    def __str__(self) -> str:
+        return self.as_href()
+
 @dataclass
 class MirrorUsagePointHref:
     mirror_usage_point_index: int = NO_INDEX
@@ -311,6 +365,9 @@ class MirrorUsagePointHref:
     meter_reading_index: int= NO_INDEX
     reading_set_index: int= NO_INDEX
     reading_index: int= NO_INDEX
+    include_mr: bool = False
+    include_rs: bool = False
+    include_r: bool = False
     
     @staticmethod
     def parse(href: str) -> MirrorUsagePointHref:
@@ -319,7 +376,59 @@ class MirrorUsagePointHref:
             return MirrorUsagePointHref()
         
         if len(items) == 2:
-            return MirrorUsagePointHref(items[1])
+            return MirrorUsagePointHref(mirror_usage_point_index = int(items[1]))
+
+        if len(items) == 3:
+            assert items[2] == "mr"
+            return MirrorUsagePointHref(int(items[1]), include_mr=True)
+        
+        if len(items == 4):
+            assert items[2] == "mr"
+            return MirrorUsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]))
+        
+        if len(items) == 5:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            return MirrorUsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True)
+        
+        if len(items) == 6:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            return MirrorUsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]))
+        
+        if len(items) == 7:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            assert items[6] == "r"
+            return UsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]), include_r=True)
+        
+        if len(items) == 8:
+            assert items[2] == "mr"
+            assert items[4] == "rs"
+            assert items[6] == "r"
+            return MirrorUsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]), include_r=True, meter_reading_index=int(items[7]))    
+        
+    
+    def as_href(self) -> str:
+        if self.reading_index != NO_INDEX:
+            return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index), "r", str(self.reading_index)])
+        elif self.include_r:
+            return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index), "r"])
+        elif self.reading_set_index != NO_INDEX:
+            return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index)])
+        elif self.include_rs:
+            return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index), "mr", str(self.meter_reading_list_index), "rs"])
+        elif self.meter_reading_list_index != NO_INDEX:
+            return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index), "mr", str(self.meter_reading_list_index)])
+        elif self.include_mr:
+            return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index), "mr"])
+        elif self.mirror_usage_point_index != NO_INDEX:
+            return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index)])
+        else:
+            return DEFAULT_MUP_ROOT
+    
+    def __str__(self) -> str:
+        return self.as_href()
             
 
 def usage_point_href(usage_point_index: int | str = NO_INDEX,
@@ -669,3 +778,7 @@ def extend_url(base_url: str, index: Optional[int] = None, suffix: Optional[str]
         result += f"/{suffix}"
 
     return result
+
+
+if __name__ == '__main__':
+    print(MirrorUsagePointHref())
