@@ -115,7 +115,7 @@ class ServerEndpoints:
         app.add_url_rule(f"/<regex('{hrefs.MUP}{hrefs.MATCH_REG}'):path>",
                          view_func=self._mup,
                          methods=["GET", "POST"])
-        app.add_url_rule(f"/<regex('{hrefs.UTP}{hrefs.MATCH_REG}'):path>",
+        app.add_url_rule(f"/<regex('{hrefs.UPT}{hrefs.MATCH_REG}'):path>",
                          view_func=self._upt,
                          methods=["GET", "POST"])
         app.add_url_rule(f"/<regex('{hrefs.CURVE}{hrefs.MATCH_REG}'):path>",
