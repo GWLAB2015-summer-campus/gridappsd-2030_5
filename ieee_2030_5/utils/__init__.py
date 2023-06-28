@@ -6,15 +6,16 @@ from typing import Optional, Type
 from xsdata.formats.dataclass.context import XmlContext
 from xsdata.formats.dataclass.parsers.config import ParserConfig
 from xsdata.formats.dataclass.parsers.xml import XmlParser
-from xsdata.formats.dataclass.serializers import XmlSerializer
+from xsdata.formats.dataclass.serializers import XmlSerializer, JsonSerializer
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
 
-__xml_context__ = XmlContext()
+__xml_context__ = XmlContext(class_type="pydantic")
 __parser_config__ = ParserConfig(fail_on_unknown_attributes=False,
                                  fail_on_unknown_properties=False)
 __xml_parser__ = XmlParser(config=__parser_config__, context=__xml_context__)
 __config__ = SerializerConfig(xml_declaration=False, pretty_print=True)
 __serializer__ = XmlSerializer(config=__config__)
+__json_serializer__ = JsonSerializer(config=__config__)
 __ns_map__ = {None: "urn:ieee:std:2030.5:ns"}
 
 import ieee_2030_5.types_ as t
@@ -38,6 +39,9 @@ def xml_to_dataclass(xml: str, type: Optional[Type] = None) -> dataclass:
 
 def dataclass_to_xml(dc: dataclass) -> str:
     return serialize_dataclass(dc)
+
+def dataclass_to_json(dc: dataclass) -> str:
+    return __json_serializer__.render(dc)
 
 
 def get_lfdi_from_cert(path: Path) -> t.Lfdi:
