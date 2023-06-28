@@ -1,5 +1,63 @@
 import ieee_2030_5.hrefs as hrefs
+from ieee_2030_5.hrefs import NO_INDEX
 
+
+def test_upt_href():
+    href = hrefs.UsagePointHref.parse("/upt")
+    assert href.usage_point_index == NO_INDEX
+    assert href.meter_reading_list_index == NO_INDEX
+    assert href.meter_reading_index == NO_INDEX
+    assert href.reading_set_index == NO_INDEX
+    assert href.reading_index == NO_INDEX
+    assert href.include_mr == False
+    
+    href = hrefs.UsagePointHref.parse(hrefs.SEP.join(["/upt", "0"]))
+    
+    assert href.usage_point_index == 0
+    assert href.meter_reading_list_index == NO_INDEX
+    assert href.meter_reading_index == NO_INDEX
+    assert href.reading_set_index == NO_INDEX
+    assert href.reading_index == NO_INDEX
+    assert href.include_mr == False
+    
+    href = hrefs.UsagePointHref.parse(hrefs.SEP.join(["/upt", "0", "mr"]))
+    
+    assert href.usage_point_index == 0
+    
+    assert href.include_mr == True
+    assert href.meter_reading_list_index == NO_INDEX
+    assert href.meter_reading_index == NO_INDEX
+    assert href.reading_set_index == NO_INDEX
+    assert href.reading_index == NO_INDEX
+
+def test_mup_href():
+    href = hrefs.MirrorUsagePointHref.parse("/mup")
+    assert href.mirror_usage_point_index == NO_INDEX
+    assert href.meter_reading_list_index == NO_INDEX
+    assert href.meter_reading_index == NO_INDEX
+    assert href.reading_set_index == NO_INDEX
+    assert href.reading_index == NO_INDEX
+    assert href.include_mr == False
+    
+    href = hrefs.MirrorUsagePointHref.parse("/mup_0")
+    
+    assert href.mirror_usage_point_index == 0
+    assert href.meter_reading_list_index == NO_INDEX
+    assert href.meter_reading_index == NO_INDEX
+    assert href.reading_set_index == NO_INDEX
+    assert href.reading_index == NO_INDEX
+    assert href.include_mr == False
+    
+    href = hrefs.MirrorUsagePointHref.parse("/mup_0_mr")
+    
+    assert href.mirror_usage_point_index == 0
+    
+    assert href.include_mr == True
+    assert href.meter_reading_list_index == NO_INDEX
+    assert href.meter_reading_index == NO_INDEX
+    assert href.reading_set_index == NO_INDEX
+    assert href.reading_index == NO_INDEX
+    
 
 def test_edev_href():
         
