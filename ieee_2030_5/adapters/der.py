@@ -52,6 +52,7 @@ DERCurveAdapter = Adapter[m.DERCurve]("curve", generic_type=m.DERCurve)
 def initialize_der_curve_adapter(sender):
     config = BaseAdapter.server_config()
     for index, curve_cfg in enumerate(config.curves):
+        curve_cfg.curveType = eval(f"m.CurveType.{curve_cfg.curveType}")
         der_curve = m.DERCurve(**curve_cfg.__dict__)
         der_curve.href = hrefs.curve_href(index)
         DERCurveAdapter.add(der_curve)
