@@ -9,6 +9,7 @@ from xsdata.formats.dataclass.parsers.xml import XmlParser
 from xsdata.formats.dataclass.serializers import XmlSerializer, JsonSerializer
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
 
+# class_type="pydantic"
 __xml_context__ = XmlContext(class_type="pydantic")
 __parser_config__ = ParserConfig(fail_on_unknown_attributes=False,
                                  fail_on_unknown_properties=False)

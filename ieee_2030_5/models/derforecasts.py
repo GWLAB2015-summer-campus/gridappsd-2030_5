@@ -13,7 +13,7 @@ from ieee_2030_5.models.sep import (
 __NAMESPACE__ = "epri:derforecast:ns"
 
 
-@dataclass
+@dataclass(order=True, unsafe_hash=True)
 class ForecastNumericType:
     """
     Real number expressed as an integer and power-of-ten-multiplier.
@@ -40,7 +40,7 @@ class ForecastNumericType:
     )
 
 
-@dataclass
+@dataclass(order=True, unsafe_hash=True)
 class DERForecastLink(Link):
     """
     SHALL contain a Link to an instance of DERForecast.
@@ -56,7 +56,7 @@ class DERForecastLink(Link):
     )
 
 
-@dataclass
+@dataclass(order=True, unsafe_hash=True)
 class ForecastParameter:
     """
     Object holding forecast for a single parameter.
@@ -90,7 +90,7 @@ class ForecastParameter:
     )
 
 
-@dataclass
+@dataclass(order=True, unsafe_hash=True)
 class DERFlexibility(DER):
     """
     Extends sep DER to include DERForecastLink.
@@ -106,7 +106,7 @@ class DERFlexibility(DER):
     )
 
 
-@dataclass
+@dataclass(order=True, unsafe_hash=True)
 class ForecastParameterSet(Resource):
     """
     A set of forecasts.
@@ -122,7 +122,7 @@ class ForecastParameterSet(Resource):
     )
 
 
-@dataclass
+@dataclass(order=True, unsafe_hash=True)
 class ForecastParameterSetList(SubscribableList):
     """
     A List element to hold ForecastParameterSet  objects.
@@ -138,7 +138,7 @@ class ForecastParameterSetList(SubscribableList):
     )
 
 
-@dataclass
+@dataclass(order=True, unsafe_hash=True)
 class DERForecast(IdentifiedObject):
     """
     DER forecast information.

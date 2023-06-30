@@ -3,12 +3,15 @@ from __future__ import annotations
 import inspect
 import logging
 import sys
-from dataclasses import dataclass, field
+from dataclasses import field
+from pydantic import parse_obj_as
+from pydantic.dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import yaml
-from dataclasses_json import dataclass_json
+import ieee_2030_5.hrefs as hrefs
+from ieee_2030_5.utils import uuid_2030_5
 
 __all__ = ["ServerConfiguration"]
 
@@ -31,14 +34,19 @@ class InvalidConfigFile(Exception):
 
 
 @dataclass
-class DeviceConfiguration(m.EndDevice):
-    # This id will be used to create certificates.
+class EndDeviceConfiguration:
+    # This id will be used to create certificate file name.
+    # Device certificates should not have a common name.
     id: str = None
 
     # This is used in the Registration function set but is
     # configured on the server and used to verify the correct location
-    # on the client
+    # from the client
     pin: int = None
+    
+    # An actual EndDevice object.
+    end_device: m.EndDevice = None
+    
     # hostname: str = None
     # ip: str = None
     # poll_rate: int = 900
@@ -47,24 +55,18 @@ class DeviceConfiguration(m.EndDevice):
     programs: List[str] = field(default_factory=list)
     
     ders: List[Dict] = field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, env):
-        return cls(**{k: v for k, v in env.items() if k in inspect.signature(cls).parameters})
-
-    def __hash__(self):
-        return self.id.__hash__()
+    
 
 
-@dataclass
-class DERCurveConfiguration(m.DERCurve):
+# @dataclass
+# class DERCurveConfiguration(m.DERCurve):
 
-    @classmethod
-    def from_dict(cls, env):
-        return cls(**{k: v for k, v in env.items() if k in inspect.signature(cls).parameters})
+#     @classmethod
+#     def from_dict(cls, env):
+#         return cls(**{k: v for k, v in env.items() if k in inspect.signature(cls).parameters})
 
-    def __hash__(self):
-        return self.description.__hash__()
+#     def __hash__(self):
+#         return self.description.__hash__()
 
 
 @dataclass
@@ -111,7 +113,6 @@ class DERProgramConfiguration(m.DERProgram):
         return self.description.__hash__()
 
 
-@dataclass_json
 @dataclass
 class GridappsdConfiguration:
     field_bus_config: Optional[str] = None
@@ -144,18 +145,13 @@ class GridappsdConfiguration:
 #     description: str
 #     mRID: Optional[str]
 
-
-@dataclass
-class ProgramList:
-    name: str
-    programs: List[m.DERProgram]
+    
 
 
 @dataclass
 class ServerConfiguration:
     openssl_cnf: str
 
-    devices: List[DeviceConfiguration]
 
     tls_repository: str
     openssl_cnf: str
@@ -163,6 +159,7 @@ class ServerConfiguration:
     server: str
     https_port: int
 
+    devices: List[EndDeviceConfiguration] = field(default_factory=list)
     log_event_list_poll_rate: int = 900
     device_capability_poll_rate: int = 900
     usage_point_post_rate: int = 300
@@ -181,10 +178,10 @@ class ServerConfiguration:
         Literal["lfdi_mode_from_cert_fingerprint"]] = "lfdi_mode_from_cert_fingerprint"
 
 
-    programs: List[DERProgramConfiguration] = field(default_factory=list)
-    controls: List[DERControlConfiguration] = field(default_factory=list)
-    curves: List[DERCurveConfiguration] = field(default_factory=list)
-    events: List[Dict] = field(default_factory=list)
+    programs: List[m.DERProgram] = field(default_factory=list)
+    controls: List[m.DERControl] = field(default_factory=list)
+    curves: List[m.DERCurve] = field(default_factory=list)
+    #events: List[Dict] = field(default_factory=list)
 
     # # map into program_lists array for programs for specific
     # # named list.
@@ -210,13 +207,69 @@ class ServerConfiguration:
     def from_dict(cls, env):
         return cls(**{k: v for k, v in env.items() if k in inspect.signature(cls).parameters})
 
+
     def __post_init__(self):
-        self.curves = [DERCurveConfiguration.from_dict(x) for x in self.curves]
-        self.controls = [DERControlConfiguration.from_dict(x) for x in self.controls]
-        self.programs = [DERProgramConfiguration.from_dict(x) for x in self.programs]
-        self.devices = [DeviceConfiguration.from_dict(x) for x in self.devices]
-        for d in self.devices:
-            d.deviceCategory = eval(f"m.DeviceCategoryType.{d.deviceCategory}").name
+        # DERCurveConfiguration.update_forward_refs()
+        ocurves: List[m.DERCurve] = []
+        for index, curve in enumerate(self.curves):
+            self.populate_mrid(curve)
+            if 'href' not in curve:
+                curve['href'] = hrefs.CurveHref(index).url()
+            curve['curveType'] = getattr(m.CurveType, curve['curveType']).value
+            ocurves.append(m.DERCurve(**curve))
+            #print(obj.__pydantic_model__.schema_json(indent=2))
+        self.curves = ocurves
+        
+        ocontrols: List[m.DERControl] = []
+        for index, control in enumerate(self.controls):
+            self.populate_mrid(control)
+            if 'href' not in control:
+                control['href'] = hrefs.ControlHref(index).url()
+            if 'base' in control:
+                control['DERControlBase'] = m.DERControlBase(**control['base'])
+                control.pop('base')
+            ocontrols.append(m.DERControl(**control))
+        self.controls = ocontrols
+        
+        oprograms: List[m.DERProgram] = []
+        for index, program in enumerate(self.programs):
+            self.populate_mrid(program)
+            if 'href' not in program:
+                program['href'] = hrefs.ProgramHref(index).url()
+            
+            if 'default_control' in program:
+                #default_control = next(filter(lambda x: x.description == program['default_control'], self.controls))
+                if 'base' in program['default_control']:
+                    program['default_control']['DERControlBase'] = m.DERControlBase(**program['default_control'].pop('base'))
+                program['defaultDERControl'] = m.DefaultDERControl(**program.pop('default_control'))
+                
+                
+            #if 'curves' in program:
+                
+            oprogram = m.DERProgram(**program)
+            oprograms.append(oprogram)
+        
+        oenddevices: List[EndDeviceConfiguration] = []
+        for index, device in enumerate(self.devices):
+            if 'deviceCategory' in device:
+                device['deviceCategory'] = getattr(m.DeviceCategoryType, device['deviceCategory']).value
+            ed = EndDeviceConfiguration(**device)
+            
+            ed = m.EndDevice(**device)
+            print(ed)
+            # self.populate_mrid(device)
+            # if 'href' not in device:
+            #     device['href'] = hrefs.EndDeviceHref(index).url()
+            # oenddevices.append(EndDeviceConfiguration(**device))  
+        #oprograms = List[m.DERProgram] = []
+        
+            
+        #self.curves = [DERCurveConfiguration.from_dict(x) for x in self.curves]
+        # self.controls = [DERControlConfiguration.from_dict(x) for x in self.controls]
+        # self.programs = [DERProgramConfiguration.from_dict(x) for x in self.programs]
+        # self.devices = [DeviceConfiguration.from_dict(x) for x in self.devices]
+        # for d in self.devices:
+        #     d.deviceCategory = eval(f"m.DeviceCategoryType.{d.deviceCategory}").name
             #d.device_category_type = eval(f"m.DeviceCategoryType.{d.device_category_type}")
 
         # der_controls, der_default_control = None, None
@@ -292,6 +345,10 @@ class ServerConfiguration:
             else:
                 _log.info("no simulation id")
             _log.info("x" * 80)
+
+    def populate_mrid(self, item: Dict):
+        if 'mRID' not in item:
+            item['mRID'] = uuid_2030_5()
 
         # if self.field_bus_config:
         #     self.field_bus_def = MessageBusDefinition.load(self.field_bus_config)

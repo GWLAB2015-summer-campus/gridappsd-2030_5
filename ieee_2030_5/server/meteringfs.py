@@ -140,7 +140,7 @@ class MirrorUsagePointRequest(RequestOp):
         limit = int(request.args.get("l", 1))
         after = int(request.args.get("a", 0))
         
-        mup = adpt.MirrorUsagePointAdapter.fetch_all(m.MirrorUsagePointList(href=mup_href.as_href(), pollRate=adpt.BaseAdapter.server_config().usage_point_post_rate))
+        mup = adpt.MirrorUsagePointAdapter.fetch_all(m.MirrorUsagePointList(href=mup_href.url(), pollRate=adpt.BaseAdapter.server_config().usage_point_post_rate))
 
         #if mup_href.mirror_usage_point_index == hrefs.NO_INDEX:
         #    mup = adpt.MirrorUsagePointAdapter.fetch_all(m.MirrorUsagePointList, start=start, after=after limit=limit)
@@ -177,9 +177,9 @@ class MirrorUsagePointRequest(RequestOp):
                            status=mup.status)
         mup_href = hrefs.MirrorUsagePointHref.parse(mup.href)
         upt_href = hrefs.UsagePointHref(usage_point_index=mup_href.mirror_usage_point_index)
-        upt.href = upt_href.as_href()
+        upt.href = upt_href.url()
         upt_href.include_mr = True        
-        upt.MeterReadingListLink = m.MeterReadingListLink(href=upt_href.as_href())
+        upt.MeterReadingListLink = m.MeterReadingListLink(href=upt_href.url())
         if index:            
             upt = adpt.UsagePointAdapter.replace(upt, index)
         else:

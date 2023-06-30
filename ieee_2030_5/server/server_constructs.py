@@ -13,8 +13,7 @@ import ieee_2030_5.models as m
 from ieee_2030_5 import hrefs
 from ieee_2030_5.adapters import BaseAdapter
 from ieee_2030_5.certs import TLSRepository, sfdi_from_lfdi
-from ieee_2030_5.config import (DeviceConfiguration, ProgramList,
-                                ServerConfiguration)
+from ieee_2030_5.config import ServerConfiguration
 from ieee_2030_5.data.indexer import add_href, get_href
 from ieee_2030_5.server.uuid_handler import UUIDHandler
 from ieee_2030_5.types_ import Lfdi
@@ -338,8 +337,8 @@ class EndDevices:
         add_href(end_device.href, end_device)
         return end_device.href
 
-    def initialize_device(self, device_config: DeviceConfiguration, lfdi: Lfdi,
-                          program_lists: List[ProgramList]) -> m.EndDevice:
+    def initialize_device(self, device_config: EndDeviceConfiguration, lfdi: Lfdi,
+                          program_lists: List[ProgramConfig]) -> m.EndDevice:
         """
         Create a new EndDevice object from the passed DeviceConfiguration.  Each time
         the method is called it will increase the number of a device such that the

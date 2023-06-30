@@ -284,7 +284,7 @@ class BaseAdapter:
     __count__: int = 0
     __server_configuration__: cfg.ServerConfiguration
     __tls_repository__: cfg.TLSRepository = None
-    __lfdi__mapped_configuration__: Dict[str, cfg.DeviceConfiguration] = {}
+    __lfdi__mapped_configuration__: Dict[str, cfg.EndDeviceConfiguration] = {}
     after_initialized = Signal('after-initialized')
         
     @classmethod
@@ -315,7 +315,7 @@ class BaseAdapter:
         return BaseAdapter.__server_configuration__
 
     @staticmethod
-    def device_configs() -> List[cfg.DeviceConfiguration]:
+    def device_configs() -> List[cfg.EndDeviceConfiguration]:
         return BaseAdapter.__server_configuration__.devices
 
     @staticmethod
@@ -323,7 +323,7 @@ class BaseAdapter:
         return BaseAdapter.__tls_repository__
 
     @staticmethod
-    def get_config_from_lfdi(lfdi: str) -> Optional[cfg.DeviceConfiguration]:
+    def get_config_from_lfdi(lfdi: str) -> Optional[cfg.EndDeviceConfiguration]:
         return BaseAdapter.__lfdi__mapped_configuration__.get(lfdi)
 
     @staticmethod

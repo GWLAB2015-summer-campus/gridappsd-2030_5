@@ -1,6 +1,21 @@
+import pytest
 import ieee_2030_5.hrefs as hrefs
 from ieee_2030_5.hrefs import NO_INDEX
 
+def test_simple_href():
+    href = hrefs.SimpleHref.parse("/dc_1", hrefs.DEFAULT_CURVE_ROOT)
+    assert 1 == href.index 
+    with pytest.raises(NotImplementedError):
+        str(href)
+    with pytest.raises(NotImplementedError):
+        href.url()
+
+def test_curve_href():
+    href = hrefs.CurveHref.parse("/dc_1")
+    assert 1 == href.index
+    assert "/dc_1" == href.url()
+    assert "/dc_1" == str(href)
+    
 
 def test_upt_href():
     href = hrefs.UsagePointHref.parse("/upt")

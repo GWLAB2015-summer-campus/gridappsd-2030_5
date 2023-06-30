@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 ieee_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(ieee_dir))
 import ieee_2030_5.models as m
-from ieee_2030_5 import dataclass_to_xml, xml_to_dataclass
+from ieee_2030_5 import dataclasss_to_xml, xml_to_dataclass
 
 session = requests.Session()
 session.cert = ('/home/os2004/tls/certs/admin.pem', '/home/os2004/tls/private/admin.pem')

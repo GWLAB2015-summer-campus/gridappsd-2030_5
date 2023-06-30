@@ -44,6 +44,7 @@ DEFAULT_DRP_ROOT = f"/{DRP}"
 DEFAULT_SELF_ROOT = f"/{SDEV}"
 DEFAULT_MESSAGE_ROOT = f"/{MSG}"
 DEFAULT_DER_ROOT = f"/{DER}"
+DEFAULT_DERC_ROOT = f"/{DERC}"
 DEFAULT_CURVE_ROOT = f"/{CURVE}"
 DEFAULT_RSPS_ROOT = f"/{RSPS}"
 DEFAULT_LOG_EVENT_ROOT = f"/{LOG}"
@@ -55,6 +56,10 @@ MATCH_REG = "[a-zA-Z0-9_]*"
 
 # Used as a sentinal value when we only want the href of the root
 NO_INDEX = -1
+
+
+    
+    
 
 class DERSubType(Enum):
     Capability = "dercap"
@@ -196,10 +201,59 @@ class EDevSubType(Enum):
     FunctionSetAssignments = END_DEVICE_FSA
     LogEventList = END_DEVICE_LOG_EVENT_LIST
     DeviceInformation = END_DEVICE_INFORMATION
-    DER = DER
+    DER = DER   
     
+@dataclass
+class SimpleHref:
+    index: int
+    
+    @staticmethod
+    def parse(href: str, root: str) -> SimpleHref:
+        if href.startswith(root):
+            href = href[len(root):]
+        if href.startswith(SEP):
+            href = href[len(SEP):]
+        return SimpleHref(int(href.split(SEP)[0]))
+    
+    def url(self) -> str:
+        raise NotImplementedError()
+    
+    def __str__(self) -> str:
+        return self.url()
+    
+@dataclass
+class ControlHref(SimpleHref):
+        
+    @staticmethod
+    def parse(href: str) -> ControlHref:
+        parsed = SimpleHref.parse(href, DEFAULT_DERC_ROOT)
+        return ControlHref(parsed.index)
+            
+    def url(self) -> str:
+        return f"{DEFAULT_DERC_ROOT}{SEP}{self.index}"
 
-
+@dataclass
+class CurveHref(SimpleHref):
+    
+    @staticmethod
+    def parse(href: str) -> CurveHref:
+        parsed = SimpleHref.parse(href, DEFAULT_CURVE_ROOT)
+        return CurveHref(parsed.index)
+        
+    def url(self) -> str:
+        return f"{DEFAULT_CURVE_ROOT}{SEP}{self.index}"
+ 
+@dataclass
+class ProgramHref(SimpleHref):
+    
+    @staticmethod
+    def parse(href: str) -> CurveHref:
+        parsed = SimpleHref.parse(href, DEFAULT_DERP_ROOT)
+        return CurveHref(parsed.index)
+        
+    def url(self) -> str:
+        return f"{DEFAULT_DERP_ROOT}{SEP}{self.index}"
+ 
 @dataclass
 class EdevHref:
     edev_index: int
@@ -337,7 +391,7 @@ class UsagePointHref:
             assert items[6] == "r"
             return UsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]), include_r=True, meter_reading_index=int(items[7]))    
         
-    def as_href(self) -> str:
+    def url(self) -> str:
         if self.reading_index != NO_INDEX:
             return SEP.join([DEFAULT_UPT_ROOT, str(self.usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index), "r", str(self.reading_index)])
         elif self.include_r:
@@ -356,7 +410,7 @@ class UsagePointHref:
             return DEFAULT_UPT_ROOT
     
     def __str__(self) -> str:
-        return self.as_href()
+        return self.url()
 
 @dataclass
 class MirrorUsagePointHref:
@@ -409,7 +463,7 @@ class MirrorUsagePointHref:
             return MirrorUsagePointHref(int(items[1]), include_mr=True, meter_reading_list_index=int(items[3]), include_rs=True, reading_set_index=int(items[5]), include_r=True, meter_reading_index=int(items[7]))    
         
     
-    def as_href(self) -> str:
+    def url(self) -> str:
         if self.reading_index != NO_INDEX:
             return SEP.join([DEFAULT_MUP_ROOT, str(self.mirror_usage_point_index), "mr", str(self.meter_reading_list_index), "rs", str(self.reading_set_index), "r", str(self.reading_index)])
         elif self.include_r:
@@ -428,7 +482,7 @@ class MirrorUsagePointHref:
             return DEFAULT_MUP_ROOT
     
     def __str__(self) -> str:
-        return self.as_href()
+        return self.url()
             
 
 def usage_point_href(usage_point_index: int | str = NO_INDEX,
