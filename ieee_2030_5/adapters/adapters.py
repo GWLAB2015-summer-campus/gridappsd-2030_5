@@ -1,6 +1,6 @@
 import ieee_2030_5.hrefs as hrefs
 import ieee_2030_5.models as m
-from ieee_2030_5.adapters import Adapter
+from ieee_2030_5.adapters import Adapter, ListAdpater
 
 DERCurveAdapter = Adapter[m.DERCurve](hrefs.curve_href(), generic_type=m.DERCurve)
 
@@ -13,6 +13,9 @@ DeviceCapabilityAdapter = Adapter[m.DeviceCapability]("/dcap", generic_type=m.De
 # Generally the href will only be in the context of an end device.
 RegistrationAdapter = Adapter[m.Registration](url_prefix="/reg", generic_type=m.Registration)
 FunctionSetAssignmentsAdapter = Adapter[m.FunctionSetAssignments](url_prefix="/fsa", generic_type=m.FunctionSetAssignments)
+DERAdapter = Adapter[m.DER](url_prefix="/der", generic_type=m.DER)
+
+GenericListAdapter = ListAdpater()
 
 
 # EndDeviceDeviceStatusAdapter = Adapter[m.DeviceStatus](hrefs.get_enddevice_device_status_href(), generic_type=m.DeviceStatus)

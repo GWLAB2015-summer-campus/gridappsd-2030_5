@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import inspect
 import logging
 import typing
+from copy import deepcopy
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import (Any, Dict, Generic, List, Optional, Protocol, Type,
-                    TypeVar, get_args, get_origin)
+from typing import (Any, ClassVar, Dict, Generic, List, Optional, Protocol,
+                    Type, TypeVar, Union, get_args, get_origin)
 
 import yaml
 from blinker import Signal
@@ -109,6 +109,52 @@ ready_signal = Signal("ready-signal")
 T = TypeVar('T')
 C = TypeVar('C')
 D = TypeVar('D')
+
+class ListAdpater:
+    def __init__(self):        
+        self._list_urls = []
+        self._list_containers: Dict[str, List] = {}
+        self._types: Dict[str, D] = {}
+        load_event.send(self)
+        # if "generic_type" not in kwargs:
+        #     raise ValueError("Missing generic_type parameter")
+        # self.uri = uri
+        # self._generic_type: Type = kwargs['generic_type']
+        # if isinstance(container, Type):
+        #     self._container = container()
+        # else:
+        #     self._container = container
+        
+        # setattr(self._container, T.__name__, [])
+    @property
+    def generic_type_name(self):
+        return self.__class__.__name__
+    
+    def initialize_uri(self, uri: str, obj: D):
+        if self._list_containers.get(uri) and self._types.get(uri) != obj:
+            _log.error("Must initialize before container has any items.")
+            raise ValueError("Must initialize before container has any items.")
+        self._types[uri] = obj
+        
+    
+    def append(self, uri: str, obj: D):
+        # if there is a type
+        expected_type = self._types.get(uri)
+        if expected_type:
+            assert isinstance(obj, expected_type)
+        
+        if uri not in self._list_containers:
+            self._list_containers[uri] = []
+        self._list_containers[uri].append(obj)
+        store_event.send(self)
+        
+    def remove(self, uri: str, index: int):
+        del self._list_containers[uri][index]
+        store_event.send(self)
+        
+    def render_container(self, uri: str, instance: object, prop: str):
+        setattr(instance, prop, deepcopy(self._list_containers[uri]))
+        
 
 
 class Adapter(Generic[T]):
@@ -323,111 +369,13 @@ class Adapter(Generic[T]):
         self._child_map[parent_index][name][index] = child
     
     
-    
-            
-
-class BaseAdapter:
-    __count__: int = 0
-    __server_configuration__: cfg.ServerConfiguration
-    __tls_repository__: cfg.TLSRepository = None
-    __lfdi__mapped_configuration__: Dict[str, cfg.DeviceConfiguration] = {}
-    after_initialized = Signal('after-initialized')
         
-    @classmethod
-    def get_next_index(cls) -> int:
-        """Retrieve the next index for an adapter list."""
-        return cls.__count__
-
-    @classmethod
-    def increment_index(cls) -> int:
-        """Increment the list to the next index and return the result to the caller.
-        
-        
-        """
-        next = cls.get_next_index()
-        cls.__count__ += 1
-        return next
-    
-    @classmethod
-    def ready(cls) -> Signal:
-        return Signal("ready")
-
-    @classmethod
-    def get_current_index(cls) -> int:
-        return cls.__count__
-
-    @staticmethod
-    def server_config() -> cfg.ServerConfiguration:
-        return BaseAdapter.__server_configuration__
-
-    @staticmethod
-    def device_configs() -> List[cfg.DeviceConfiguration]:
-        return BaseAdapter.__server_configuration__.devices
-
-    @staticmethod
-    def tls_repo() -> cfg.TLSRepository:
-        return BaseAdapter.__tls_repository__
-
-    @staticmethod
-    def get_config_from_lfdi(lfdi: str) -> Optional[cfg.DeviceConfiguration]:
-        return BaseAdapter.__lfdi__mapped_configuration__.get(lfdi)
-
-    @staticmethod
-    def is_initialized():
-        return BaseAdapter.__device_configurations__ is not None and BaseAdapter.__tls_repository__ is not None
-
-    @staticmethod
-    def initialize(server_config: cfg.ServerConfiguration, tlsrepo: TLSRepository):
-        """Initialize all of the adapters
-        
-        The initialization means that there are concrete object backing the storage system based upon
-        urls that can be read during the http call to the spacific end point.  In other words a
-        DERCurve dataclass can be retrieved from storage by going to the href /dc/1 rather than
-        having to get it through an object.  
-        
-        The adapters are responsible for storing data into the object store using add_href function.
-        """
-        BaseAdapter.__server_configuration__ = server_config
-        BaseAdapter.__lfdi__mapped_configuration__ = {}
-        BaseAdapter.__tls_repository__ = tlsrepo
-        
-        
-
-        # # Map from the configuration id and lfdi to the device configuration.
-        # for cfg in server_config.devices:
-        #     lfdi = tlsrepo.lfdi(cfg.id)
-        #     BaseAdapter.__lfdi__mapped_configuration__[lfdi] = cfg
-
-        #BaseAdapter.after_initialized.send(BaseAdapter)
-        #ready_signal.send(BaseAdapter)
-        # BaseAdapter.ready().send(BaseAdapter)
-        # Find subclasses of us and initialize them calling _initalize method
-        # TODO make this non static
-        #EndDeviceAdapter._initialize()
-
-    @staticmethod
-    def build(**kwargs) -> dataclass:
-        raise NotImplementedError()
-
-    @staticmethod
-    def store(value: dataclass) -> dataclass:
-        raise NotImplementedError()
-
-    @staticmethod
-    def build_instance(cls, cfg_dict: Dict, signature_cls=None) -> object:
-        if signature_cls is None:
-            signature_cls = cls
-        return cls(**{
-            k: v
-            for k, v in cfg_dict.items() if k in inspect.signature(signature_cls).parameters
-        })
-
-
-from ieee_2030_5.adapters.adapters import (DERControlAdapter, DERCurveAdapter,
-                                           DERProgramAdapter,
+from ieee_2030_5.adapters.adapters import (DERAdapter, DERControlAdapter,
+                                           DERCurveAdapter, DERProgramAdapter,
                                            DeviceCapabilityAdapter,
                                            EndDeviceAdapter,
                                            FunctionSetAssignmentsAdapter,
+                                           GenericListAdapter,
                                            RegistrationAdapter)
 
 __all__ = [
@@ -437,7 +385,9 @@ __all__ = [
     'DeviceCapabilityAdapter',
     'EndDeviceAdapter',
     'FunctionSetAssignmentsAdapter',
-    'RegistrationAdapter'
+    'RegistrationAdapter',
+    'DERAdapter',
+    'GenericListAdapter'
 ]
 # from ieee_2030_5.adapters.log import LogAdapter
 # from ieee_2030_5.adapters.mupupt import MirrorUsagePointAdapter

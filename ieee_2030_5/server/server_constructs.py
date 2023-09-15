@@ -206,6 +206,8 @@ def initialize_2030_5(config: ServerConfiguration, tlsrepo: TLSRepository):
             end_device.sFDI = tlsrepo.sfdi(cfg_device.id)
             end_device.postRate = cfg_device.post_rate
             adpt.EndDeviceAdapter.put(index, end_device)
+            adpt.GenericListAdapter.initialize_uri(end_device.FunctionSetAssignmentsListLink.href, m.FunctionSetAssignments)
+            
         else:
             _log.debug(f"Adding end device {cfg_device.id} to server")
             end_device = m.EndDevice(lFDI=tlsrepo.lfdi(cfg_device.id),
