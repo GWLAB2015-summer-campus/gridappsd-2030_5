@@ -5,8 +5,10 @@ import inspect
 from pprint import pprint
 import logging
 import typing
+from typing import Callable, Iterator
+from uuid import uuid4
 from copy import deepcopy
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass, asdict
 from enum import Enum
 from pathlib import Path
 from typing import (Any, ClassVar, Dict, Generic, List, Optional, Protocol, Type, TypeVar, Union,
@@ -15,6 +17,7 @@ from typing import (Any, ClassVar, Dict, Generic, List, Optional, Protocol, Type
 import yaml
 from blinker import Signal
 
+from ieee_2030_5.utils import uuid_2030_5
 import ieee_2030_5.config as cfg
 import ieee_2030_5.hrefs as hrefs
 import ieee_2030_5.models as m
@@ -50,45 +53,45 @@ def __get_store__(store_name: str) -> Path:
 
 def do_load_event(caller: Union[Adapter, ResourceListAdapter]) -> None:
     """Load an adaptor type from the data_store path.
-
-
     """
-    store_file = None
-    if isinstance(caller, Adapter):
-        _log.debug(f"Loading store {caller.generic_type_name}")
-        store_file = __get_store__(caller.generic_type_name)
-    elif isinstance(caller, ResourceListAdapter):
-        store_file = __get_store__(caller.__class__.__name__)
-    else:
-        raise ValueError(f"Invalid caller type {type(caller)}")
+    _log.debug("No-op load")
+    # store_file = None
+    # if isinstance(caller, Adapter):
+    #     _log.debug(f"Loading store {caller.generic_type_name}")
+    #     store_file = __get_store__(caller.generic_type_name)
+    # elif isinstance(caller, ResourceListAdapter):
+    #     store_file = __get_store__(caller.__class__.__name__)
+    # else:
+    #     raise ValueError(f"Invalid caller type {type(caller)}")
+    #
+    # if not store_file.exists():
+    #     _log.debug(f"Store {store_file.as_posix()} does not exist at present.")
+    #     return
+    #
+    # # Load from yaml unsafe values etc.
+    # with open(store_file, "r") as f:
+    #     items = yaml.load(f, Loader=yaml.UnsafeLoader)
+    #
+    #     caller.__dict__.update(items)
 
-    if not store_file.exists():
-        _log.debug(f"Store {store_file.as_posix()} does not exist at present.")
-        return
-
-    # Load from yaml unsafe values etc.
-    with open(store_file, "r") as f:
-        items = yaml.load(f, Loader=yaml.UnsafeLoader)
-
-        caller.__dict__.update(items)
-
-    _log.debug(f"Loaded {caller.count} items from store")
+    # _log.debug(f"Loaded {caller.count} items from store")
 
 
 def do_save_event(caller: Union[Adapter, ResourceListAdapter]) -> None:
 
-    store_file = None
-    if isinstance(caller, Adapter):
-        _log.debug(f"Loading store {caller.generic_type_name}")
-        store_file = __get_store__(caller.generic_type_name)
-        _log.debug(f"Storing: {caller.generic_type_name}")
-    elif isinstance(caller, ResourceListAdapter):
-        store_file = __get_store__(caller.__class__.__name__)
-    else:
-        raise ValueError(f"Invalid caller type {type(caller)}")
-
-    with open(store_file, 'w') as f:
-        yaml.dump(caller.__dict__, f, default_flow_style=False, allow_unicode=True)
+    _log.debug("Store no op")
+    # store_file = None
+    # if isinstance(caller, Adapter):
+    #     _log.debug(f"Loading store {caller.generic_type_name}")
+    #     store_file = __get_store__(caller.generic_type_name)
+    #     _log.debug(f"Storing: {caller.generic_type_name}")
+    # elif isinstance(caller, ResourceListAdapter):
+    #     store_file = __get_store__(caller.__class__.__name__)
+    # else:
+    #     raise ValueError(f"Invalid caller type {type(caller)}")
+    #
+    # with open(store_file, 'w') as f:
+    #     yaml.dump(caller.__dict__, f, default_flow_style=False, allow_unicode=True)
 
 
 load_event.connect(do_load_event)
@@ -143,6 +146,7 @@ ready_signal = Signal("ready-signal")
 T = TypeVar('T')
 C = TypeVar('C')
 D = TypeVar('D')
+E = TypeVar('E')
 
 
 class ResourceListAdapter:
@@ -163,6 +167,8 @@ class ResourceListAdapter:
     def __init__(self):
         self._list_urls = []
         self._container_dict: Dict[str, Dict[int, D]] = {}
+        self._singleton_dict: Dict[str, D] = {}
+        self._singleton_envelops: Dict[str, E] = {}
         self._types: Dict[str, D] = {}
         if not os.environ.get('IEEE_ADAPTER_IGNORE_INITIAL_LOAD'):
             _log.debug(f"Intializing adapter {self.__class__.__name__}")
@@ -190,12 +196,30 @@ class ResourceListAdapter:
             raise ValueError("Must initialize before container has any items.")
         self._types[list_uri] = obj
 
+    def append_and_increment_href(self, list_uri: str, obj: D) -> D:
+        url_parts: list[str] = list_uri.split(hrefs.SEP)
+        try:
+            int(url_parts[0])
+            obj.href = hrefs.SEP.join(url_parts[1:].append(str(self.list_size(list_uri))))
+        except ValueError:
+            obj.href = hrefs.SEP.join([list_uri, str(self.list_size(list_uri))])
+
+        GlobalmRIDs.add_item(value=obj)
+
+        self.append(list_uri, obj)
+        return obj
+
     def append(self, list_uri: str, obj: D):
         """
-        Appends an object to a list container in the adapter. If the list container does not exist, it is created. If the
-        list container exists but has not been initialized with a type, the type of the object is used to initialize the
-        list container. If the list container exists and has been initialized with a type, the type of the object is checked
-        against the initialized type, and an astsertion error is raised if they do not match.
+        Appends an object to a list container in the adapter.
+
+        The following rules are used to determine the container of the passed url.
+
+        1. If the list container does not exist, it is created.
+        2. If the list container exists but has not been initialized with a type, the type of the object[D]
+           is used to initialize the list container.
+        3. If the list container exists and has been initialized with a type, the type of the object[D] is
+           validated against the initialized type.  An ValueError is thrown if the types do not match.
 
         :param list_uri: The URI of the list container
         :type list_uri: str
@@ -214,6 +238,7 @@ class ResourceListAdapter:
 
             # Recurse over the list appending to the end for each in the list
             for ele in getattr(obj, expected_type.__name__):
+                GlobalmRIDs.add_item(value=ele)
                 self.append(list_uri, ele)
 
             # Exit here as all of the sub-items have been added now.
@@ -231,10 +256,16 @@ class ResourceListAdapter:
         if list_uri not in self._container_dict:
             self._container_dict[list_uri] = {}
         self._container_dict[list_uri][len(self._container_dict[list_uri])] = obj
+        if hasattr(obj, "mRID"):
+            GlobalmRIDs.add_item_with_mrid(obj.mRID, obj)
         store_event.send(self)
 
     def get_by_mrid(self, list_uri: str, mrid: str) -> Optional[T]:
-        return self.get_item_by_prop(list_uri, "mRID", mrid)
+        try:
+            return self.get_item_by_prop(list_uri, "mRID", mrid)
+        except NotFoundError as ex:
+            _log.warning(f"mRID: {mrid} not found in list: {list_uri}")
+            return None
 
     def get_item_by_prop(self, list_uri: str, prop: str, value: Any) -> D:
         for item in self._container_dict.get(list_uri, {}).values():
@@ -260,6 +291,11 @@ class ResourceListAdapter:
 
         thelist = eval(f"m.{cls.__name__}List()")
         try:
+            # Create a new list because the type is known and the uri is already known
+            # there should be no need to add any items to the list, but the list should
+            # exist on first access now.
+            if list_uri not in self._container_dict:
+                self._container_dict[list_uri] = {}
             thecontainerlist = list(self._container_dict[list_uri].values())
             for sort in sort_by:
                 subobj = sort.split('.')
@@ -300,6 +336,35 @@ class ResourceListAdapter:
             raise KeyError(f"List {list_uri} not found in adapter")
 
         return list(self._container_dict[list_uri].values())
+
+    def set_single(self, uri: str, obj: D):
+        GlobalmRIDs.add_item(value=obj)
+        self._singleton_dict[uri] = obj
+
+    def get_single(self, uri: str) -> D:
+        return self._singleton_dict.get(uri)
+
+    def set_single_amd_meta_data(self, uri: str, envelop: dict, obj: D):
+        GlobalmRIDs.add_item(value=obj)
+        self.set_single(uri=uri, obj=obj)
+        self._singleton_envelops[uri] = envelop
+
+    def get_single_meta_data(self, uri: str) -> E:
+        return self._singleton_envelops[uri]
+
+    def show_single_dict(self):
+        from pprint import pformat
+        _log.debug(pformat(self._singleton_dict, indent=2))
+
+    def filter_single_dict(self, fn: Callable) -> Iterator:
+        """
+        Filters the single objects using the specified callable.
+
+        The return value will either be None or an Iterator.  The None value
+        will be when no elements match in the given callable.
+
+        """
+        return filter(fn, self._singleton_dict.keys())
 
     def get(self, list_uri: str, key: int) -> D:
         if list_uri not in self._container_dict:
@@ -347,11 +412,43 @@ class ResourceListAdapter:
     def print_all(self):
 
         for k in sorted(self._container_dict.keys()):
-            print("K:", k)
             for index, v in self._container_dict[k].items():
-                print("index:", index)
+                print(f"{k} :index:", index)
                 pprint(v.__dict__)
             #pprint(self._container_dict[k].)
+
+    def get_all_as_dict(self) -> Dict[str, Dict[int, D]]:
+        out = {}
+
+        def replace_bytes(obj: dict) -> dict:
+            for k, v in obj.items():
+                if isinstance(v, dict):
+                    obj[k] = replace_bytes(v)
+                elif isinstance(v, bytearray):
+                    obj[k] = v.hex()
+                elif isinstance(v, bytes):
+                    obj[k] = v.hex()
+            return obj
+
+        for k in sorted(self._container_dict.keys()):
+            for index, v in self._container_dict[k].items():
+                if k not in out:
+                    out[k] = {}
+                a = deepcopy(v)
+                out[k] = asdict(a)
+                out[k] = replace_bytes(out[k])
+
+        data = dict(lists=out)
+
+        single = {}
+
+        for k, v in self._singleton_dict.items():
+            single[k] = asdict(deepcopy(v))
+            single[k] = replace_bytes(single[k])
+
+        data['singletons'] = single
+
+        return data
 
     def clear_all(self):
         self._container_dict.clear()
@@ -364,6 +461,47 @@ class ResourceListAdapter:
             self._list_urls[list_uri].clear()
             self._types[list_uri].clear()
 
+class _GlobalAdapter:
+    def __init__(self):
+        self._mrid_to_object: dict[str, object] = {}
+
+    def new_mrid(self) -> str:
+        """
+        Returns a unique mrid that has not be used in the global object.
+        """
+        while True:
+            _new = uuid_2030_5().lower()
+            if _new not in self._mrid_to_object:
+                return _new
+
+
+    def add_item(self, value: object):
+        if hasattr(value, 'mRID'):
+            mrid = getattr(value, 'mRID')
+            if not mrid:
+                _log.error(f"Invalid mrid specified on object of type {type(value)}\n {value}")
+            else:
+                self._mrid_to_object[mrid] = value
+
+    def get_items(self) -> list[object]:
+        return [deepcopy(x) for x in self._mrid_to_object.values()]
+
+    def add_item_with_mrid(self, mrid: str, value: object):
+        self._mrid_to_object[mrid] = value
+
+    def remove_item(self, mrid: str):
+        self._mrid_to_object.pop(mrid)
+
+    def get_item(self, mrid: str) -> object:
+        return self._mrid_to_object.get(mrid)
+
+    def has_item(self, mrid: str) -> bool:
+        return mrid in self._mrid_to_object
+
+    def clear(self):
+        self._mrid_to_object.clear()
+
+GlobalmRIDs = _GlobalAdapter()
 
 class Adapter(Generic[T]):
     """
@@ -451,6 +589,9 @@ class Adapter(Generic[T]):
         self._current_index += 1
         self._item_list[self._current_index] = item
 
+        if hasattr(item, 'mRID'):
+            GlobalmRIDs.add_item(getattr(item, 'mRID'), item)
+
         store_event.send(self)
         return item
 
@@ -529,23 +670,44 @@ class Adapter(Generic[T]):
     def store(self):
         store_event.send(self)
 
+    def get_all_as_dict(self) -> Dict[str, Dict[int, D]]:
+        out = {}
+
+        def replace_bytes(obj: dict) -> dict:
+            for k, v in obj.items():
+                if isinstance(v, dict):
+                    obj[k] = replace_bytes(v)
+                elif isinstance(v, bytearray):
+                    obj[k] = v.hex()
+                elif isinstance(v, bytes):
+                    obj[k] = v.hex()
+            return obj
+
+        for k in sorted(self._item_list.keys()):
+            copyofitem = deepcopy(self._item_list[k])
+            out[k] = asdict(copyofitem)
+            out[k] = replace_bytes(out[k])
+
+        return out
+
+
 
 from ieee_2030_5.adapters.adapters import (DERAdapter, DERControlAdapter, DERCurveAdapter,
                                            DERProgramAdapter, DeviceCapabilityAdapter,
                                            EndDeviceAdapter, FunctionSetAssignmentsAdapter,
-                                           RegistrationAdapter, MirrorUsagePointAdapter,
-                                           UsagePointAdapter, TimeAdapter, ListAdapter,
-                                           create_mirror_usage_point, create_mirror_meter_reading)
+                                           RegistrationAdapter, TimeAdapter, ListAdapter,
+                                           create_mirror_usage_point, create_or_update_meter_reading)
 
 __all__ = [
     'DERControlAdapter', 'DERCurveAdapter', 'DERProgramAdapter', 'DeviceCapabilityAdapter',
     'EndDeviceAdapter', 'FunctionSetAssignmentsAdapter', 'RegistrationAdapter', 'DERAdapter',
-    'MirrorUsagePointAdapter', 'TimeAdapter', 'UsagePointAdapter', 'create_mirror_usage_point',
-    'create_mirror_meter_reading', 'ListAdapter'
+    'TimeAdapter', 'create_mirror_usage_point', 'create_or_update_meter_reading', 'ListAdapter',
+    'GlobalmRIDs'
 ]
 
 
 def clear_all_adapters():
+    GlobalmRIDs.clear()
     for adpt in __all__:
         obj = eval(adpt)
         if isinstance(obj, Adapter):

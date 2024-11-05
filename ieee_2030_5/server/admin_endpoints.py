@@ -36,6 +36,7 @@ class AdminEndpoints:
 
         #        app.add_url_rule("/admin/ders/<int:edev_index>", view_func=self._admin_ders)
 
+        app.add_url_rule("/admin/resources", view_func=self._admin_resources)
         # COMPLETE
         app.add_url_rule("/admin/edev/<int:edevid>/fsa/<int:fsaid>/derp",
                          view_func=self._admin_edev_fsa_derp)
@@ -93,6 +94,15 @@ class AdminEndpoints:
 
     #fsa = FSAAdapter.fetch_by_end_device(edevid)
 
+    def _admin_resources(self) -> Response:
+        headers = {'CONTENT-TYPE': "application/json"}
+        resp = adpt.ListAdapter.get_all_as_dict()
+
+        data = {'resource_lists': adpt.ListAdapter.get_all_as_dict()}
+        data['end_devices'] = adpt.EndDeviceAdapter.get_all_as_dict()
+
+        return Response(json.dumps(data), status=200)
+
     def _admin_certs(self) -> Response:
         headers = {'CONTENT-TYPE': "application/json"}
         tls_repo: TLSRepository = g.TLS_REPOSITORY
@@ -101,13 +111,13 @@ class AdminEndpoints:
 
     def _admin_ders(self) -> Response:
         """Returns DER or DERList depending on the request method.
-        
+
         If request method is GET, return an DERList object.
-        
+
         If request method is POST, save the DER object and return it with new href for the end device.
-        
+
         If request method is PUT, update the DER object and return it.
-        
+
         If request method is DELETE, remove the DER object and return None.
         """
         if request.method in ('POST', 'PUT'):
@@ -138,13 +148,13 @@ class AdminEndpoints:
 
     def _admin_programs(self) -> Response:
         """Returns EndDevice or EndDeviceList depending on the request method.
-        
+
         If request method is GET, return an EndDeviceList object.
-        
+
         If request method is POST, save the EndDevice object and return it with new href for the end device.
-        
+
         If request method is PUT, update the EndDevice object and return it.
-        
+
         If request method is DELETE, remove the EndDevice object and return None.
         """
         if request.method in ('POST', 'PUT'):
@@ -192,13 +202,13 @@ class AdminEndpoints:
 
     def _admin_fsa(self) -> Response:
         """Returns EndDevice or EndDeviceList depending on the request method.
-        
+
         If request method is GET, return an EndDeviceList object.
-        
+
         If request method is POST, save the EndDevice object and return it with new href for the end device.
-        
+
         If request method is PUT, update the EndDevice object and return it.
-        
+
         If request method is DELETE, remove the EndDevice object and return None.
         """
         if request.method in ('POST', 'PUT'):
@@ -246,13 +256,13 @@ class AdminEndpoints:
 
     def _admin_enddevices(self) -> Response:
         """Returns EndDevice or EndDeviceList depending on the request method.
-        
+
         If request method is GET, return an EndDeviceList object.
-        
+
         If request method is POST, save the EndDevice object and return it with new href for the end device.
-        
+
         If request method is PUT, update the EndDevice object and return it.
-        
+
         If request method is DELETE, remove the EndDevice object and return None.
         """
         if request.method in ('POST', 'PUT'):
@@ -312,15 +322,15 @@ class AdminEndpoints:
 
     def _admin_controls(self) -> Response:
         """Returns DERControl or DERControlList depending on the request method.
-        
+
         If request method is GET, return a DERControlList object.
-        
+
         If request method is POST, save the DERControl object and return it with new href for the control.
-        
+
         If request method is PUT, update the DERControl object and return it.
-        
+
         If request method is DELETE, remove the DERControl object and return None.
-        
+
         """
 
         if request.method in ('POST', 'PUT'):
@@ -362,12 +372,12 @@ class AdminEndpoints:
 
     def _admin_curves(self) -> Response:
         """Returns DERCurve or DERCurve List depending upon request method.
-        
+
         If request method is GET, return a DERCurveList object.
-        
+
         If request method is POST or PUT, return a DERCurve object.
-        
-        If request method is DELETE return None.        
+
+        If request method is DELETE return None.
         """
         if request.method in ('POST', 'PUT'):
             data = request.data.decode('utf-8')

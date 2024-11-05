@@ -39,20 +39,9 @@
 # -------------------------------------------------------------------------------
 
 import logging
+import logging.config
 import os
 import shutil
-
-log_level = os.environ.get('LOGGING_LEVEL', 'DEBUG').upper()
-   
-levels = {
-    'DEBUG': logging.DEBUG,
-    'INFO': logging.INFO,
-    'WARNING': logging.WARNING,
-    'ERROR': logging.ERROR
-}
-
-logging.basicConfig(level=levels[log_level])
-
 import socket
 import sys
 import threading
@@ -68,9 +57,7 @@ import ieee_2030_5.hrefs as hrefs
 from ieee_2030_5.certs import TLSRepository
 from ieee_2030_5.config import InvalidConfigFile, ServerConfiguration
 from ieee_2030_5.data.indexer import add_href
-from ieee_2030_5.server.server_constructs import initialize_2030_5
-
-_log = logging.getLogger()
+from ieee_2030_5.adapters.gridappsd_adapter import GridAPPSDAdapter
 
 
 class ServerThread(threading.Thread):
@@ -100,7 +87,6 @@ def get_tls_repository(cfg: ServerConfiguration,
     if create_certificates_for_devices:
         already_represented = set()
 
-        
         # registers the devices, but doesn't initialize_device the end devices here.
         for k in cfg.devices:
             if tlsrepo.has_device(k.id):
@@ -131,31 +117,94 @@ def remove_stop_file():
         os.remove(pth)
 
 
+def get_default_logger_config(log_level: str | int = 'INFO'):
+    if isinstance(log_level, int):
+        log_level = logging.getLevelName(log_level)
+
+    return {
+        "version": 1,
+        "formatters": {
+            "default": {
+                "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+            },
+            'brief': {
+                'datefmt': '%H:%M:%S',
+                'format': '%(levelname)-8s; %(name)s; %(message)s;'
+            },
+            'single-line': {
+                'datefmt':
+                '%H:%M:%S',
+                'format':
+                '%(levelname)-8s; %(asctime)s; %(name)s; %(module)s:%(funcName)s;%(lineno)d: %(message)s'
+            },
+        },
+        "handlers": {
+            "wsgi": {
+                "class": "logging.StreamHandler",
+                "stream": "ext: //flask.logging.wsgi_errors_stream",
+                "formatter": "default"
+            },
+            'console': {
+                'level': log_level,
+                'class': 'logging.StreamHandler',
+                'formatter': 'brief',
+    #'filters': ['my_filter'],
+    # 'stream': 'ext://sys.stdout'
+            }
+        },
+        "root": {
+            "level": log_level,
+            "handlers": ["wsgi", "console"]
+        },
+        'loggers': {
+            '': {    # this is root logger
+                'level': log_level,
+                'handlers': ['console'],
+            },
+        }
+    }
+
+
+_log = logging.getLogger("ieee_2030_5")
+
 
 def _main():
+    global _log
     parser = ArgumentParser()
 
     parser.add_argument(dest="config", help="Configuration file for the server.")
-    parser.add_argument("--no-validate",
-                        action="store_true",
-                        help="Allows faster startup since the resolving of addresses is not done!")
+    # parser.add_argument("--validate",
+    #                     action="store_true",
+    #                     help="Validate that the client is reachable by an addAllows faster startup since the resolving of addresses is not done!")
     parser.add_argument(
-        "--no-create-certs",
+        "--create-certs",
         action="store_true",
-        help="If specified certificates for for client and server will not be created.")
+        help="If specified certificates for for client and server will be created.")
     parser.add_argument("--debug", action="store_true", help="Debug level of the server")
     parser.add_argument("--production",
                         action="store_true",
                         default=False,
                         help="Run the server in a threaded environment.")
-    parser.add_argument("--lfdi", 
-                        help="Use lfdi mode allows a single lfdi to be connected to on an http connection")
-    parser.add_argument("--show-lfdi", action="store_true",
+    parser.add_argument(
+        "--lfdi",
+        help="Use lfdi mode allows a single lfdi to be connected to on an http connection")
+    parser.add_argument("--show-lfdi",
+                        action="store_true",
                         help="Show all of the lfdi for the generated certificates and exit.")
+    parser.add_argument(
+        "--simulation_id",
+        help=
+        "When running as a service the simulation_id must be passed for it to run in this mode.")
     opts = parser.parse_args()
 
-    logging_level = logging.DEBUG if opts.debug else logging.INFO
-    logging.basicConfig(level=logging_level)
+    #logconfig = get_default_logger_config(logging.DEBUG if opts.debug else logging.INFO)
+    #logging.config.dictConfig(logconfig)
+    log_level = logging.DEBUG if opts.debug else logging.INFO
+    logging.basicConfig(level=log_level)
+    logging.getLogger("watchdog.observers.inotify_buffer").setLevel(logging.INFO)
+    _log = logging.getLogger("ieee_2030_5")
+
+    _log.debug("Here I am")
 
     os.environ["IEEE_2030_5_CONFIG_FILE"] = str(
         Path(opts.config).expanduser().resolve(strict=True))
@@ -163,6 +212,10 @@ def _main():
     cfg_dict = yaml.safe_load(Path(opts.config).expanduser().resolve(strict=True).read_text())
 
     config = ServerConfiguration(**cfg_dict)
+
+    os.environ['GRIDAPPSD_SERVICE_NAME'] = config.service_name
+    if config.simulation_id:
+        os.environ['GRIDAPPSD_SIMULATION_ID'] = config.simulation_id
 
     if config.lfdi_mode == "lfdi_mode_from_file":
         os.environ["IEEE_2030_5_CERT_FROM_COMBINED_FILE"] = '1'
@@ -173,69 +226,93 @@ def _main():
     add_href(hrefs.get_server_config_href(), config)
     unknown = []
     # Only check for resolvability if not passed --no-validate
-    if not opts.no_validate:
-        _log.debug("Validating hostnames and/or ip of devices are resolvable.")
-        for i in range(len(config.devices)):
-            assert config.devices[i].hostname
+    # if not opts.no_validate:
+    #     _log.debug("Validating hostnames and/or ip of devices are resolvable.")
+    #     for i in range(len(config.devices)):
+    #         assert config.devices[i].hostname
+    #
+    #         try:
+    #             socket.gethostbyname(config.devices[i].hostname)
+    #         except socket.gaierror:
+    #             if hasattr(config.devices[i], "ip"):
+    #                 try:
+    #                     socket.gethostbyname(config.devices[i].ip)
+    #                 except socket.gaierror:
+    #                     unknown.append(config.devices[i].hostname)
+    #             else:
+    #                 unknown.append(config.devices[i].hostname)
+    #
+    # if unknown:
+    #     _log.error("Couldn't resolve the following hostnames.")
+    #     for host in unknown:
+    #         _log.error(host)
+    #     sys.exit(1)
 
-            try:
-                socket.gethostbyname(config.devices[i].hostname)
-            except socket.gaierror:
-                if hasattr(config.devices[i], "ip"):
-                    try:
-                        socket.gethostbyname(config.devices[i].ip)
-                    except socket.gaierror:
-                        unknown.append(config.devices[i].hostname)
-                else:
-                    unknown.append(config.devices[i].hostname)
-
-    if unknown:
-        _log.error("Couldn't resolve the following hostnames.")
-        for host in unknown:
-            _log.error(host)
-        sys.exit(1)
-        
-    if opts.show_lfdi and not opts.no_create_certs:
+    if opts.show_lfdi and opts.create_certs:
         sys.stderr.write("Can't show lfdi when creating certificates.\n")
         sys.exit(1)
 
-    create_certs = not opts.no_create_certs
-    tls_repo = get_tls_repository(config, create_certs)
-    
+    tls_repo = get_tls_repository(config, create_certificates_for_devices=opts.create_certs)
+    gridappsd_adpt = None
+
+    if config.gridappsd is not None:
+        _log.info("Loading GridAPPSD devices.")
+
+        import ieee_2030_5.adapters as adpt
+        from gridappsd import GridAPPSD
+
+        gapps = GridAPPSD(stomp_address=config.gridappsd.address,
+                          stomp_port=config.gridappsd.port,
+                          username=config.gridappsd.username,
+                          password=config.gridappsd.password)
+        assert gapps.connected
+
+        gridappsd_adpt = GridAPPSDAdapter(gapps=gapps,
+                                          gridappsd_configuration=config.gridappsd,
+                                          tls=tls_repo)
+
+        gridappsd_devices: list = []
+        if opts.create_certs:
+            _log.debug("Creating certificates for GridAPPSD devices.")
+            gridappsd_devices = gridappsd_adpt.create_2030_5_device_certificates_and_configurations(
+            )
+        else:
+            gridappsd_devices = gridappsd_adpt.get_device_configurations()
+
+        config.devices.extend(gridappsd_devices)
+
     if opts.show_lfdi:
         for cn in config.devices:
             sys.stdout.write(f"{cn.id} {tls_repo.lfdi(cn.id)}\n")
-        sys.exit(0)    
-    
+        sys.exit(0)
+
     # Puts the server into http single client lfdi mode.
     if opts.lfdi:
         config.lfdi_client = opts.lfdi
-            
+
     # Initialize the data storage for the adapters
     if config.storage_path is None:
         config.storage_path = Path("data_store")
     else:
         config.storage_path = Path(config.storage_path)
-    
+
     # Cleanse means we want to reload the storage each time the server
     # is run.  Note this is dependent on the adapter being filestore
     # not database.  I will have to modify later to deal with that.
     if config.cleanse_storage and config.storage_path.exists():
         _log.debug(f"Removing {config.storage_path}")
         shutil.rmtree(config.storage_path)
-        
+
     data_store_userdir = Path("~/.ieee_2030_5_data").expanduser()
     if config.cleanse_storage and data_store_userdir.exists():
         _log.debug(f"Removing {data_store_userdir}")
         shutil.rmtree(data_store_userdir)
-        
-    
+
     # Has to be after we remove the storage path if necessary
     from ieee_2030_5.server.server_constructs import initialize_2030_5
-    
+
     initialize_2030_5(config, tls_repo)
-    
-    
+
     from ieee_2030_5.flask_server import run_server
 
     #from ieee_2030_5.gui import run_gui
@@ -254,22 +331,29 @@ def _main():
     # if __name__ in {"__main__", "__mp_main__"}:
     #     ui = run_gui()
     #     ui.run_with(app)
-    
-        #run_gui()
-        
-        # p_gui = Process(target = run_gui)
-        # p_gui.daemon = True
-        # p_gui.start()
-                
-                
-        # # while True:
-        # #     sleep(1)
-    run_server(config,
+
+    #run_gui()
+
+    # p_gui = Process(target = run_gui)
+    # p_gui.daemon = True
+    # p_gui.start()
+
+    if gridappsd_adpt:
+        gridappsd_adpt.start_publishing()
+
+    # # while True:
+    # #     sleep(1)
+    try:
+        run_server(config,
                 tls_repo,
                 debug=opts.debug,
-                use_reloader=True,
+                use_reloader=False,
                 use_debugger=opts.debug,
                 threaded=False)
+    except KeyboardInterrupt:
+        _log.info("Shutting down server")
+        sys.flush()
+
     # except KeyboardInterrupt:
     #     _log.info("Shutting down server")
     # finally:

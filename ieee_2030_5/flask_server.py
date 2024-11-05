@@ -40,18 +40,18 @@ server_config: ServerConfiguration = None
 tls_repository: TLSRepository = None
 
 
-class LogProtocolHandler(logging.Handler):
+# class LogProtocolHandler(logging.Handler):
 
-    def __init__(self, level=0) -> None:
-        super().__init__(level)
-        super().setFormatter('%(message)s')
+#     def __init__(self, level=0) -> None:
+#         super().__init__(level)
+#         super().setFormatter('%(message)s')
 
-    def emit(self, record: logging.LogRecord) -> None:
-        pass    # super().handle(record)
+#     def emit(self, record: logging.LogRecord) -> None:
+#         pass    # super().handle(record)
 
 
-_log_protocol = logging.getLogger("protocol")
-_log_protocol.addHandler(LogProtocolHandler(logging.DEBUG))
+# _log_protocol = logging.getLogger("protocol")
+# _log_protocol.addHandler(LogProtocolHandler(logging.DEBUG))
 
 
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
@@ -183,10 +183,11 @@ def before_request():
 
 
 def after_request(response: Response) -> Response:
-    _log_protocol.debug(f"\nREQ: {request.path}")
-    _log_protocol.debug(f"\nRESP HEADER: {str(response.headers).strip()}")
-    first_line = response.get_data().decode('utf-8').split('\n')[0]
-    _log_protocol.debug(f"\nRESP: {first_line}")
+
+    # _log_protocol.debug(f"\nREQ: {request.path}")
+    # _log_protocol.debug(f"\nRESP HEADER: {str(response.headers).strip()}")
+    # first_line = response.get_data().decode('utf-8').split('\n')[0]
+    # _log_protocol.debug(f"\nRESP: {first_line}")
 
     # _log.debug(f"RESP HEADERS:\n{response.headers}")
     # _log.debug(f"RESP:\n{response.get_data().decode('utf-8')}")
@@ -440,3 +441,9 @@ def build_server(config: ServerConfiguration, tlsrepo: TLSRepository, **kwargs) 
                        request_handler=PeerCertWSGIRequestHandler,
                        port=port,
                        **kwargs)
+
+def make_app(config_file: Path, reset_certs: bool) -> Flask:
+    config = ServerConfiguration.load(config_file)
+    tlsrepo = TLSRepository(config.tls_repository, clear=reset_certs, openssl_cnffile_template=config.openssl_cnf, serverhost=config.server_hostname)
+    app = __build_app__(config, tlsrepo)
+    return app
