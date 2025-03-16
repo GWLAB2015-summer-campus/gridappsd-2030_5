@@ -181,6 +181,7 @@ def _main():
         action="store_true",
         help="If specified certificates for for client and server will be created.")
     parser.add_argument("--debug", action="store_true", help="Debug level of the server")
+    parser.add_argument("--non-tls", action="store_true", help="Run the server in non-tls mode.")
     parser.add_argument("--production",
                         action="store_true",
                         default=False,
@@ -346,6 +347,7 @@ def _main():
     try:
         run_server(config,
                 tls_repo,
+                is_tls=not opts.non_tls,
                 debug=opts.debug,
                 use_reloader=False,
                 use_debugger=opts.debug,

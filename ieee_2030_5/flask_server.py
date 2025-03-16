@@ -53,7 +53,6 @@ tls_repository: TLSRepository = None
 # _log_protocol = logging.getLogger("protocol")
 # _log_protocol.addHandler(LogProtocolHandler(logging.DEBUG))
 
-
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
     """
     We subclass this class so that we can gain access to the connection
@@ -379,10 +378,10 @@ def __build_app__(config: ServerConfiguration, tlsrepo: TLSRepository) -> Flask:
     return app
 
 
-def run_app(app: Flask, host, ssl_context, request_handler, port, **kwargs):
+def run_app(app: Flask, host, ssl_context, request_handler, port, is_tls, **kwargs):
     exclude_patterns = ["data_store/**", "docs/**", "examples/**", "ieee_2030_5_gui/**", "logs/**"]
     app.run(host=host,
-            ssl_context=ssl_context,
+            ssl_context= ssl_context if is_tls else None,
             request_handler=request_handler,
             port=port,
             exclude_patterns=exclude_patterns,
