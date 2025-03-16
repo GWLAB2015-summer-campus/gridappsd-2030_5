@@ -1,0 +1,125 @@
+#file: noinspection SpellCheckingInspection
+---
+server: 127.0.0.1
+port: 8090
+service_name: IEEE_2030_5
+proxy_hostname: 0.0.0.0:8443
+
+tls_repository: "~/tls"
+openssl_cnf: "openssl.cnf"
+
+# enddevices_register_access_only
+# enddevices_create_on_start
+# enddevices_allow_all_access
+server_mode: enddevices_allow_all_access
+
+# lfdi_mode: Determines what piece of information is used to calculate the lfdi
+#
+# Options:
+#   lfdi_mode_from_file             - sha256 hash of certificate file's content.
+#   lfdi_mode_from_cert_fingerprint - sha256 hash of the certificates fingerprint.
+#
+# default: lfdi_mode_from_cert_fingerprint
+lfdi_mode: lfdi_mode_from_file
+#lfdi_mode: lfdi_mode_from_cert_fingerprint
+
+lfdi_client: 778f8119f0be796e2883cb2b2d50e003c29692f7
+
+# Create an administrator certificate that can be used from
+# browser/api to connect to the platform.
+#
+# this is important for the demo
+generate_admin_cert: True
+
+log_event_list_poll_rate: 60
+device_capability_poll_rate: 60
+mirror_usage_point_post_rate: 15
+
+# Reset storage so no memory when server restarts.
+cleanse_storage: true
+
+# Directory containing data files for the platform.
+# This directory will be created if it does not exist.
+storage_path: data_store
+
+# Should every device have a der associated by default?
+include_default_der_on_all_devices: true
+
+# Make sure that all ders have a default program associated with it
+include_default_der_program_on_ders: true
+
+# The default program to use for all ders.
+default_program:
+  description: Default Program
+  primacy: 0
+  DefaultDERControl:
+    setESDelay: 30
+    setGradW: 1000
+
+    DERControlBase:
+      opModConnect: true
+      opModEnergize: true
+
+# End Device
+devices:
+  # SolarEdge SE6000H HD-Wave SetApp Enabled Inverter
+  - id: dev1
+    # DeviceCategoryType from ieee_2030_5.models.DeviceCategoryType
+    device_categories:
+      - OTHER_GENERATION_SYSTEMS
+    #   - OTHER_GENERATION_SYSTEMS
+    pin: 111115
+    programs:
+      - Default Program
+    fsas:
+      - fsa1
+    #   - fsa2
+    # ders:
+    #   - description: DER 1
+
+  #- id: dev2
+  # device_categories:
+  #   - OTHER_STORAGE_SYSTEMS
+  #   - OTHER_GENERATION_SYSTEMS
+  # pin: 111111
+  # fsas:
+  #   - fsa2
+  # ders:
+  #   - description: DER 2
+fsas:
+  - description: fsa1
+    programs:
+      - Default Program
+#   - description: fsa2
+#     programs:
+#     - Program 1
+
+# programs:
+#   - description: Default Program
+#     primacy: 0
+#     DefaultDERControl:
+#       setESDelay: 30
+#       setGradW: 1000
+
+#       DERControlBase:
+#         opModConnect: true
+#         opModEnergize: true
+
+# curves:
+#   - description: Curve 1
+#     curveType: 11
+#     CurveData:
+#       - xvalue: 99
+#         yvalue: 50
+#       - xvalue: 103
+#         yvalue: -50
+#       - xvalue: 101
+#         yvalue: -50
+#       - xvalue: 97
+#         yvalue: 50
+#     rampDecTms: 600
+#     rampIncTms: 600
+#     rampPT1Tms: 10
+#     xMultiplier: 0
+#     yMultiplier: 0
+#     yRefType: 3
