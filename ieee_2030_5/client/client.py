@@ -6,7 +6,7 @@ import logging
 import ssl
 import threading
 import xml.dom.minidom
-from http.client import HTTPSConnection
+from http.client import HTTPSConnection, HTTPConnection
 from os import PathLike
 from pathlib import Path
 from threading import Timer
@@ -22,57 +22,7 @@ import ieee_2030_5.utils.tls_wrapper as tls
 _log = logging.getLogger(__name__)
 _log_req_resp = logging.getLogger(__name__ + ".request")
 
-
-class IEEE2030_5_Client:
-    clients: set[IEEE2030_5_Client] = set()
-
-    # noinspection PyUnresolvedReferences
-    def __init__(self,
-                 cafile: PathLike,
-                 server_hostname: str,
-                 keyfile: PathLike,
-                 certfile: PathLike,
-                 server_ssl_port: Optional[int] = 443,
-                 debug: bool = True):
-
-        cafile = cafile if isinstance(cafile, PathLike) else Path(cafile)
-        keyfile = keyfile if isinstance(keyfile, PathLike) else Path(keyfile)
-        certfile = certfile if isinstance(certfile, PathLike) else Path(certfile)
-
-        self._key = keyfile
-        self._cert = certfile
-        self._ca = cafile
-
-        assert cafile.exists(), f"cafile doesn't exist ({cafile})"
-        assert keyfile.exists(), f"keyfile doesn't exist ({keyfile})"
-        assert certfile.exists(), f"certfile doesn't exist ({certfile})"
-
-        self._ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        self._ssl_context.check_hostname = False
-        self._ssl_context.verify_mode = ssl.CERT_OPTIONAL    #  ssl.CERT_REQUIRED
-        self._ssl_context.load_verify_locations(cafile=cafile)
-
-        # Loads client information from the passed cert and key files. For
-        # client side validation.
-        self._ssl_context.load_cert_chain(certfile=certfile, keyfile=keyfile)
-
-        self._http_conn = HTTPSConnection(host=server_hostname,
-                                          port=server_ssl_port,
-                                          context=self._ssl_context)
-        self._device_cap: Optional[m.DeviceCapability] = None
-        self._mup: Optional[m.MirrorUsagePointList] = None
-        self._upt: Optional[m.UsagePointList] = None
-        self._edev: Optional[m.EndDeviceListLink] = None
-        self._end_devices: Optional[m.EndDeviceListLink] = None
-        self._fsa_list: Optional[m.FunctionSetAssignmentsListLink] = None
-        self._debug = debug
-        self._dcap_poll_rate: int = 0
-        self._dcap_timer: Optional[Timer] = None
-        self._disconnect: bool = False
-        self._tls = tls.OpensslWrapper
-
-        IEEE2030_5_Client.clients.add(self)
-
+class IEEE2030_5_Client_Base:
     @property
     def http_conn(self) -> HTTPSConnection:
         if self._http_conn.sock is None:
@@ -197,7 +147,7 @@ class IEEE2030_5_Client:
         self._disconnect = True
         if self._dcap_timer:
             self._dcap_timer.cancel()
-        IEEE2030_5_Client.clients.remove(self)
+        IEEE2030_5_Client_Non_Tls.clients.remove(self)
 
     def request(self, endpoint: str, body: dict = None, method: str = "GET", headers: dict = None):
 
@@ -302,11 +252,93 @@ class IEEE2030_5_Client:
         return response
 
 
+class IEEE2030_5_Client_Non_Tls(IEEE2030_5_Client_Base):
+    clients: set[IEEE2030_5_Client_Non_Tls] = set()
+
+    # noinspection PyUnresolvedReferences
+    def __init__(self,
+                 server_hostname: str,
+                 server_port: Optional[int] = 443,
+                 debug: bool = True):
+
+        # Loads client information from the passed cert and key files. For
+        # client side validation.
+
+        self._http_conn = HTTPConnection(host=server_hostname,
+                                          port=server_port)
+        self._device_cap: Optional[m.DeviceCapability] = None
+        self._mup: Optional[m.MirrorUsagePointList] = None
+        self._upt: Optional[m.UsagePointList] = None
+        self._edev: Optional[m.EndDeviceListLink] = None
+        self._end_devices: Optional[m.EndDeviceListLink] = None
+        self._fsa_list: Optional[m.FunctionSetAssignmentsListLink] = None
+        self._debug = debug
+        self._dcap_poll_rate: int = 0
+        self._dcap_timer: Optional[Timer] = None
+        self._disconnect: bool = False
+        self._tls = tls.OpensslWrapper
+
+        IEEE2030_5_Client_Non_Tls.clients.add(self)
+
+class IEEE2030_5_Client(IEEE2030_5_Client_Base):
+    clients: set[IEEE2030_5_Client] = set()
+
+    # noinspection PyUnresolvedReferences
+    def __init__(self,
+                 cafile: PathLike,
+                 server_hostname: str,
+                 keyfile: PathLike,
+                 certfile: PathLike,
+                 server_ssl_port: Optional[int] = 443,
+                 debug: bool = True):
+
+        cafile = cafile if isinstance(cafile, PathLike) else Path(cafile)
+        keyfile = keyfile if isinstance(keyfile, PathLike) else Path(keyfile)
+        certfile = certfile if isinstance(certfile, PathLike) else Path(certfile)
+
+        self._key = keyfile
+        self._cert = certfile
+        self._ca = cafile
+
+        assert cafile.exists(), f"cafile doesn't exist ({cafile})"
+        assert keyfile.exists(), f"keyfile doesn't exist ({keyfile})"
+        assert certfile.exists(), f"certfile doesn't exist ({certfile})"
+
+        self._ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        self._ssl_context.check_hostname = False
+        self._ssl_context.verify_mode = ssl.CERT_OPTIONAL    #  ssl.CERT_REQUIRED
+        self._ssl_context.load_verify_locations(cafile=cafile)
+
+        # Loads client information from the passed cert and key files. For
+        # client side validation.
+        self._ssl_context.load_cert_chain(certfile=certfile, keyfile=keyfile)
+
+        self._http_conn = HTTPSConnection(host=server_hostname,
+                                          port=server_ssl_port,
+                                          context=self._ssl_context)
+        self._device_cap: Optional[m.DeviceCapability] = None
+        self._mup: Optional[m.MirrorUsagePointList] = None
+        self._upt: Optional[m.UsagePointList] = None
+        self._edev: Optional[m.EndDeviceListLink] = None
+        self._end_devices: Optional[m.EndDeviceListLink] = None
+        self._fsa_list: Optional[m.FunctionSetAssignmentsListLink] = None
+        self._debug = debug
+        self._dcap_poll_rate: int = 0
+        self._dcap_timer: Optional[Timer] = None
+        self._disconnect: bool = False
+        self._tls = tls.OpensslWrapper
+
+        IEEE2030_5_Client.clients.add(self)
+
 # noinspection PyTypeChecker
 def __release_clients__():
     for x in IEEE2030_5_Client.clients:
         x.__close__()
     IEEE2030_5_Client.clients = None
+
+    for x in IEEE2030_5_Client_Non_Tls.clients:
+        x.__close__()
+    IEEE2030_5_Client_Non_Tls.clients = None
 
 
 atexit.register(__release_clients__)
