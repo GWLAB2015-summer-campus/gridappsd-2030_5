@@ -214,6 +214,12 @@ def _main():
 
     config = ServerConfiguration(**cfg_dict)
 
+    if config.port is None:
+        if opts.non_tls:
+            config.port = 8080
+        else:
+            config.port = 8090
+
     os.environ['GRIDAPPSD_SERVICE_NAME'] = config.service_name
     if config.simulation_id:
         os.environ['GRIDAPPSD_SIMULATION_ID'] = config.simulation_id
