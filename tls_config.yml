@@ -1,6 +1,6 @@
 #file: noinspection SpellCheckingInspection
 ---
-server: 127.0.0.1
+server: 192.168.101.244
 port: 8080
 service_name: IEEE_2030_5
 proxy_hostname: 0.0.0.0:8443

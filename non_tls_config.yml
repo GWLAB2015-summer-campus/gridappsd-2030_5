@@ -1,12 +1,12 @@
 #file: noinspection SpellCheckingInspection
 ---
-server: 127.0.0.1
+server: 192.168.101.244
 port: 8081
 service_name: IEEE_2030_5
 proxy_hostname: 0.0.0.0:8443
 
 non_tls: True
-tls_repository: "~/tls"
+tls_repository: "~/non_tls"
 openssl_cnf: "openssl.cnf"
 
 # enddevices_register_access_only
@@ -23,12 +23,13 @@ server_mode: enddevices_allow_all_access
 # default: lfdi_mode_from_cert_fingerprint
 lfdi_mode: lfdi_mode_from_file
 #lfdi_mode: lfdi_mode_from_cert_fingerprint
+lfdi_client: 94B92E00A5B71E540104F3FD61652A48B2E88F14
 
 # Create an administrator certificate that can be used from
 # browser/api to connect to the platform.
 #
 # this is important for the demo
-generate_admin_cert: True
+generate_admin_cert: False
 
 log_event_list_poll_rate: 60
 device_capability_poll_rate: 60
@@ -62,8 +63,10 @@ default_program:
 # End Device
 devices:
   # SolarEdge SE6000H HD-Wave SetApp Enabled Inverter
-  - id: dev1
+  - id: edev0
+    lfdi: 94B92E00A5B71E540104F3FD61652A48B2E88F14
     # DeviceCategoryType from ieee_2030_5.models.DeviceCategoryType
+
     device_categories:
       - OTHER_GENERATION_SYSTEMS
     #   - OTHER_GENERATION_SYSTEMS
