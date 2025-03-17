@@ -416,6 +416,7 @@ def run_server(config: ServerConfiguration, tlsrepo: TLSRepository, **kwargs):
             ssl_context=ssl_context,
             port=port,
             request_handler=PeerCertWSGIRequestHandler,
+            is_tls=not config.non_tls,
             **kwargs)
 
 

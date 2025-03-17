@@ -327,3 +327,5 @@ class ServerConfiguration:
             if test_lfdi == int(lfdi):
                 return d.pin
         raise NotFoundError(f"The device_id: {lfdi} was not found.")
+    
+    non_tls: bool = False

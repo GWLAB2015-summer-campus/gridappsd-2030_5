@@ -4,7 +4,6 @@ server: 127.0.0.1
 service_name: IEEE_2030_5
 proxy_hostname: 0.0.0.0:8443
 
-non_tls: True
 tls_repository: "~/tls"
 openssl_cnf: "openssl.cnf"
 
@@ -22,8 +21,6 @@ server_mode: enddevices_allow_all_access
 # default: lfdi_mode_from_cert_fingerprint
 lfdi_mode: lfdi_mode_from_file
 #lfdi_mode: lfdi_mode_from_cert_fingerprint
-
-lfdi_client: 778f8119f0be796e2883cb2b2d50e003c29692f7
 
 # Create an administrator certificate that can be used from
 # browser/api to connect to the platform.
