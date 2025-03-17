@@ -4,7 +4,7 @@ import logging
 from blinker import Signal
 
 # from ieee_2030_5.adapters import BaseAdapter
-from ieee_2030_5.certs import TLSRepository, lfdi_from_fingerprint
+from ieee_2030_5.certs import TLSRepository, lfdi_from_fingerprint, sfdi_from_lfdi
 from ieee_2030_5.config import ServerConfiguration, DeviceConfiguration
 from ieee_2030_5.data.indexer import add_href, get_href
 
@@ -13,7 +13,6 @@ _log = logging.getLogger(__name__)
 import ieee_2030_5.adapters as adpt
 import ieee_2030_5.hrefs as hrefs
 import ieee_2030_5.models as m
-
 
 def create_device_capability(end_device_index: int, device_cfg: DeviceConfiguration) -> m.DeviceCapability:
     """Create a device capability objecct for the passed device index
@@ -346,8 +345,9 @@ def initialize_2030_5(config: ServerConfiguration, tlsrepo: TLSRepository):
             adpt.EndDeviceAdapter.put(index, end_device)
         else:
             _log.debug(f"Adding end device {cfg_device.id} to server")
-            end_device = m.EndDevice(lFDI=tlsrepo.lfdi(cfg_device.id),
-                                     sFDI=tlsrepo.sfdi(cfg_device.id),
+            config_device = None
+            end_device = m.EndDevice(lFDI=cfg_device.lfdi if cfg_device.lfdi else tlsrepo.lfdi(cfg_device.id),
+                                     sFDI=sfdi_from_lfdi(cfg_device.lfdi) if cfg_device.lfdi else tlsrepo.sfdi(cfg_device.id),
                                      postRate=cfg_device.post_rate,
                                      enabled=True,
                                      changedTime=adpt.TimeAdapter.current_tick)
