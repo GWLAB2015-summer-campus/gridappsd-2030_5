@@ -99,6 +99,7 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
             # than x509 certificates.
             if self.config.lfdi_client:
                 _log.debug("Using lfdi from config.")
+                environ['ieee_2030_5_tls_bypass'] = True
                 environ['ieee_2030_5_lfdi'] = self.config.lfdi_client
                 environ['ieee_2030_5_sfdi'] = sfdi_from_lfdi(self.config.lfdi_client)
                 return environ
