@@ -98,6 +98,7 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
             # Short circuit the connection from the client and utilize http rather
             # than x509 certificates.
             if self.config.lfdi_client:
+                _log.debug("Using lfdi from config.")
                 environ['ieee_2030_5_lfdi'] = self.config.lfdi_client
                 environ['ieee_2030_5_sfdi'] = sfdi_from_lfdi(self.config.lfdi_client)
                 return environ
@@ -108,7 +109,15 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
             if PeerCertWSGIRequestHandler.is_admin(environ['PATH_INFO']):
                 cert, key = self.tlsrepo.get_file_pair("admin")
                 x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+            elif self.config.non_tls:
+                _log.debug("Using non-tls mode.")
+                environ['ieee_2030_5_tls_bypass'] = True
+                environ["ieee_2030_5_lfdi"] = self.tlsrepo.lfdi(self.config.devices[0].id)
+                environ["ieee_2030_5_sfdi"] = sfdi_from_lfdi(environ["ieee_2030_5_lfdi"])
+                environ['ieee_2030_5_serial_number'] = "00000000"
+                return environ
             else:
+                _log.debug("Using x509 from connection.")
                 x509_binary = self.connection.getpeercert(True)
                 x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509_binary)
             environ['ieee_2030_5_peercert'] = x509

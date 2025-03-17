@@ -23,8 +23,6 @@ server_mode: enddevices_allow_all_access
 lfdi_mode: lfdi_mode_from_file
 #lfdi_mode: lfdi_mode_from_cert_fingerprint
 
-lfdi_client: 778f8119f0be796e2883cb2b2d50e003c29692f7
-
 # Create an administrator certificate that can be used from
 # browser/api to connect to the platform.
 #
