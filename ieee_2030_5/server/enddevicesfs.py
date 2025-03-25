@@ -99,8 +99,8 @@ class EDevRequests(RequestOp):
         edev_href = hrefs.HrefParser(request.path)
 
         ed = adpt.EndDeviceAdapter.fetch_by_property('lFDI', self.lfdi)
+        eds = adpt.EndDeviceAdapter.fetch_all(start=start, after=after, limit=limit)
 
-        # /edev_0_dstat
         if request.path == ed.DERListLink.href:
             retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
         elif request.path == ed.LogEventListLink.href:
@@ -113,12 +113,13 @@ class EDevRequests(RequestOp):
             else:
                 retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
         elif not edev_href.has_index():
-            retval = m.EndDeviceList(href=request.path, all=1, results=1, EndDevice=[ed])
+            retval = m.EndDeviceList(href=request.path, all=adpt.EndDeviceAdapter.size(), results=len(eds), EndDevice=eds)
         else:
             if retval := get_href(request.path):
                 pass
             else:
-                retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
+                index = int(request.path.split('_')[-1])
+                retval = eds[index]
 
         # if adpt.ListAdapter.has_list(request.path):
         #     retval = adpt.ListAdapter.get_resource_list(request.path)

@@ -408,7 +408,7 @@ def run_server(config: ServerConfiguration, tlsrepo: TLSRepository, **kwargs):
     ssl_context = None
     # If lfd_client is specified then we are running in http mode so we don'
     # establish an sslcontext.
-    if not config.lfdi_client:
+    if not config.lfdi_client and not config.non_tls:
         ssl_context = __build_ssl_context__(tlsrepo)
 
     try:

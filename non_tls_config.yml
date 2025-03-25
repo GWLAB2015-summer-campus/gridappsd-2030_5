@@ -23,7 +23,6 @@ server_mode: enddevices_allow_all_access
 # default: lfdi_mode_from_cert_fingerprint
 lfdi_mode: lfdi_mode_from_file
 #lfdi_mode: lfdi_mode_from_cert_fingerprint
-lfdi_client: 94B92E00A5B71E540104F3FD61652A48B2E88F14
 
 # Create an administrator certificate that can be used from
 # browser/api to connect to the platform.
@@ -62,66 +61,40 @@ default_program:
 
 # End Device
 devices:
-  # SolarEdge SE6000H HD-Wave SetApp Enabled Inverter
   - id: edev0
     lfdi: 94B92E00A5B71E540104F3FD61652A48B2E88F14
-    # DeviceCategoryType from ieee_2030_5.models.DeviceCategoryType
 
     device_categories:
       - OTHER_GENERATION_SYSTEMS
-    #   - OTHER_GENERATION_SYSTEMS
     pin: 111115
     programs:
       - Default Program
     fsas:
       - fsa1
-    #   - fsa2
-    # ders:
-    #   - description: DER 1
 
-  #- id: dev2
-  # device_categories:
-  #   - OTHER_STORAGE_SYSTEMS
-  #   - OTHER_GENERATION_SYSTEMS
-  # pin: 111111
-  # fsas:
-  #   - fsa2
-  # ders:
-  #   - description: DER 2
+  - id: edev1
+    lfdi: 666c247154e3465ef1e89989c364f5b2ada67c12
+
+    device_categories:
+      - OTHER_GENERATION_SYSTEMS
+    pin: 211114
+    programs:
+      - Default Program
+    fsas:
+      - fsa1
+
+  - id: edev2
+    lfdi: 778c247154e3465ef1e89989c364f5b2ada67c12
+
+    device_categories:
+      - OTHER_GENERATION_SYSTEMS
+    pin: 311113
+    programs:
+      - Default Program
+    fsas:
+      - fsa1
+
 fsas:
   - description: fsa1
     programs:
       - Default Program
-#   - description: fsa2
-#     programs:
-#     - Program 1
-
-# programs:
-#   - description: Default Program
-#     primacy: 0
-#     DefaultDERControl:
-#       setESDelay: 30
-#       setGradW: 1000
-
-#       DERControlBase:
-#         opModConnect: true
-#         opModEnergize: true
-
-# curves:
-#   - description: Curve 1
-#     curveType: 11
-#     CurveData:
-#       - xvalue: 99
-#         yvalue: 50
-#       - xvalue: 103
-#         yvalue: -50
-#       - xvalue: 101
-#         yvalue: -50
-#       - xvalue: 97
-#         yvalue: 50
-#     rampDecTms: 600
-#     rampIncTms: 600
-#     rampPT1Tms: 10
-#     xMultiplier: 0
-#     yMultiplier: 0
-#     yRefType: 3

@@ -6179,10 +6179,10 @@ class FunctionSetAssignmentsBase(Resource):
     TimeLink: Optional[TimeLink] = field(default=None, metadata={
         "type": "Element",
     })
-    UsagePointListLink: Optional[UsagePointListLink] = field(default=None,
-                                                             metadata={
-                                                                 "type": "Element",
-                                                             })
+    # UsagePointListLink: Optional[UsagePointListLink] = field(default=None,
+    #                                                          metadata={
+    #                                                              "type": "Element",
+    #                                                          })
 
 
 @dataclass
@@ -6984,13 +6984,13 @@ class DeviceCapability(FunctionSetAssignmentsBase):
                                                            metadata={
                                                                "type": "Element",
                                                            })
-    MirrorUsagePointListLink: Optional[MirrorUsagePointListLink] = field(default=None,
-                                                                         metadata={
-                                                                             "type": "Element",
-                                                                         })
-    SelfDeviceLink: Optional[SelfDeviceLink] = field(default=None, metadata={
-        "type": "Element",
-    })
+    # MirrorUsagePointListLink: Optional[MirrorUsagePointListLink] = field(default=None,
+    #                                                                      metadata={
+    #                                                                          "type": "Element",
+    #                                                                      })
+    # SelfDeviceLink: Optional[SelfDeviceLink] = field(default=None, metadata={
+    #     "type": "Element",
+    # })
     pollRate: int = field(default=900, metadata={
         "type": "Attribute",
     })
