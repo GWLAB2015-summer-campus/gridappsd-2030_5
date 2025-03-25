@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from http.client import BAD_REQUEST
 from typing import Optional
 
-import pytz
 import tzlocal
 import werkzeug.exceptions
 from flask import Flask, Response, request

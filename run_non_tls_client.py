@@ -43,3 +43,5 @@ if __name__ == '__main__':
 
     fsa = client.function_set_assignment()
     print(fsa)
+
+    client.get("/tm")

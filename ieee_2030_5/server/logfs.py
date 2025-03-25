@@ -1,6 +1,6 @@
 from datetime import datetime
 
-import pytz
+import zoneinfo
 from flask import Response, request
 
 import ieee_2030_5.adapters as adpt
@@ -28,5 +28,5 @@ class Log(RequestOp):
             raise BAD_REQUEST()
 
         if not data.createdDateTime:
-            data.createdDateTime = format_time(datetime.utcnow().replace(tzinfo=pytz.utc))
+            data.createdDateTime = format_time(datetime.utcnow().replace(tzinfo=zoneinfo.ZoneInfo('UTC')))
         adpt.LogAdapter.store(path, data)
