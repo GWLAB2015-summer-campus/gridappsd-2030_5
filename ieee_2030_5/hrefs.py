@@ -75,7 +75,7 @@ class HrefParser:
         Ex: /edev_12_dstat has an index of 12 so this will return true
         Ex: /edev has no index so this will return false
         """
-        return len(self._split) > 1
+        return len(self._split) > ( 1 if SEP != '/' else 2)
 
     def count(self) -> int:
         return len(self._split)
@@ -122,7 +122,7 @@ class EndDeviceHref:
 
         self.index = index
         if edev_href is not None:
-            self.index = int(edev_href.split(SEP)[1])
+            self.index = int(edev_href.split(SEP)[-1])
 
         self._root = SEP.join([DEFAULT_EDEV_ROOT, str(self.index)])
 

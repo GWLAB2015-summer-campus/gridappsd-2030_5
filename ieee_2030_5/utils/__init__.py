@@ -64,7 +64,6 @@ def xml_to_dataclass(xml: str, type: Optional[Type] = None) -> dataclass:
     """
     Parse the xml passed and return result from loaded classes.
     """
-    print(xml)
     parsed = __xml_parser__.from_string(xml, type)
 
     # The xml parser from string seems to double decode the lfDI which

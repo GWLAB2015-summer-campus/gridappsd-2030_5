@@ -118,7 +118,7 @@ class EDevRequests(RequestOp):
             if retval := get_href(request.path):
                 pass
             else:
-                index = int(request.path.split('_')[-1])
+                index = int(request.path.split(hrefs.SEP)[-1])
                 retval = eds[index]
 
         # if adpt.ListAdapter.has_list(request.path):
