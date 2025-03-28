@@ -98,3 +98,39 @@ fsas:
   - description: fsa1
     programs:
       - Default Program
+
+programs:
+  - description: Program1
+    primacy: 0
+    DefaultDERControl:
+      setESDelay: 30
+      setGradW: 1000
+
+      DERControlBase:
+        opModConnect: true
+        opModEnergize: true
+  - description: Program2
+    primacy: 0
+    DefaultDERControl:
+      setESDelay: 30
+      setGradW: 1000
+
+      DERControlBase:
+        opModConnect: true
+        opModEnergize: true
+
+default_der_control:
+  DERControlBase:
+    opModConnect: True
+    opModEnergize: True
+    opModFixedPFAbsorbW: True
+    opModFixedPFInjectW: 0.9
+  setESDelay: null
+  setESHighFreq: null
+  setESHighVolt: null
+  setESLowFreq: null
+  setESLowVolt: null
+  setESRampTms: null
+  setESRandomDelay: null
+  setGradW: null
+  setSoftGradW: null
