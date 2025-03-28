@@ -367,6 +367,7 @@ def initialize_2030_5(config: ServerConfiguration, tlsrepo: TLSRepository):
             #         adpt.ListAdapter.append(ed_href.function_set_assignments,
             #                                 fsa_with_description[fsa])
 
+            adpt.ListAdapter.initialize_uri(ed_href.log_event_list, m.LogEvent)
             adpt.ListAdapter.initialize_uri(ed_href.der_list, m.DER)
             adpt.ListAdapter.initialize_uri(ed_href.function_set_assignments, m.FunctionSetAssignments)
 
