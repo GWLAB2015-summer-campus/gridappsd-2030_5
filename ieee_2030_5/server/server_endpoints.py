@@ -119,6 +119,9 @@ class ServerEndpoints:
         app.add_url_rule(f"/<regex('{hrefs.LOG}{hrefs.MATCH_REG}'):path>",
                          view_func=self._log,
                          methods=["GET", "POST"])
+        app.add_url_rule(f"/<regex('{hrefs.RSPS}{hrefs.MATCH_REG}'):path>",
+                         view_func=self._rsps,
+                         methods=["GET", "POST"])
         # rulers = (
         #     (hrefs.der_urls, self._der),
         #     #(hrefs.edev_urls, self._edev),
@@ -203,3 +206,7 @@ class ServerEndpoints:
         _list = adpt.ListAdapter.get_list(request.path)
         obj = m.DERCurveList(href=path, DERCurve=_list, all=len(_list))
         return RequestOp(server_endpoints=self).build_response_from_dataclass(obj)
+
+    def _rsps(self, path) -> Response:
+        rsps_href = hrefs.ResponseHref.parse(path)
+        return "response"
