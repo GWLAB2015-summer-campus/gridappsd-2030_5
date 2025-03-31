@@ -57,7 +57,6 @@ import ieee_2030_5.hrefs as hrefs
 from ieee_2030_5.certs import TLSRepository, NonTLSRepository
 from ieee_2030_5.config import InvalidConfigFile, ServerConfiguration
 from ieee_2030_5.data.indexer import add_href
-from ieee_2030_5.adapters.gridappsd_adapter import GridAPPSDAdapter
 
 
 class ServerThread(threading.Thread):
@@ -240,28 +239,6 @@ def _main():
 
     add_href(hrefs.get_server_config_href(), config)
     unknown = []
-    # Only check for resolvability if not passed --no-validate
-    # if not opts.no_validate:
-    #     _log.debug("Validating hostnames and/or ip of devices are resolvable.")
-    #     for i in range(len(config.devices)):
-    #         assert config.devices[i].hostname
-    #
-    #         try:
-    #             socket.gethostbyname(config.devices[i].hostname)
-    #         except socket.gaierror:
-    #             if hasattr(config.devices[i], "ip"):
-    #                 try:
-    #                     socket.gethostbyname(config.devices[i].ip)
-    #                 except socket.gaierror:
-    #                     unknown.append(config.devices[i].hostname)
-    #             else:
-    #                 unknown.append(config.devices[i].hostname)
-    #
-    # if unknown:
-    #     _log.error("Couldn't resolve the following hostnames.")
-    #     for host in unknown:
-    #         _log.error(host)
-    #     sys.exit(1)
 
     if opts.show_lfdi and opts.create_certs:
         sys.stderr.write("Can't show lfdi when creating certificates.\n")
@@ -272,32 +249,6 @@ def _main():
     else:
         tls_repo = get_tls_repository(config, create_certificates_for_devices=opts.create_certs)
     gridappsd_adpt = None
-
-    if config.gridappsd is not None:
-        _log.info("Loading GridAPPSD devices.")
-
-        import ieee_2030_5.adapters as adpt
-        from gridappsd import GridAPPSD
-
-        gapps = GridAPPSD(stomp_address=config.gridappsd.address,
-                          stomp_port=config.gridappsd.port,
-                          username=config.gridappsd.username,
-                          password=config.gridappsd.password)
-        assert gapps.connected
-
-        gridappsd_adpt = GridAPPSDAdapter(gapps=gapps,
-                                          gridappsd_configuration=config.gridappsd,
-                                          tls=tls_repo)
-
-        gridappsd_devices: list = []
-        if opts.create_certs:
-            _log.debug("Creating certificates for GridAPPSD devices.")
-            gridappsd_devices = gridappsd_adpt.create_2030_5_device_certificates_and_configurations(
-            )
-        else:
-            gridappsd_devices = gridappsd_adpt.get_device_configurations()
-
-        config.devices.extend(gridappsd_devices)
 
     if opts.show_lfdi:
         for cn in config.devices:

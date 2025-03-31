@@ -33,9 +33,6 @@ flet-runtime==0.22.1
 gevent==21.12.0
 greenlet==1.1.3.post0
 grequests==0.6.0
-gridappsd-2030-5==0.0.2a37
-gridappsd-field-bus==2024.8.1a1
-gridappsd-python==2024.8.1a1
 h11==0.14.0
 httpcore==1.0.7
 httptools==0.6.4
