@@ -61,6 +61,7 @@ MATCH_REG = "[a-zA-Z0-9_]*"
 
 # Used as a sentinal value when we only want the href of the root
 NO_INDEX = -1
+NO_CONTENT = ""
 
 
 class HrefParser:
@@ -745,15 +746,34 @@ class ResponseHref:
     rsps_subtitle: str = ""
     rsps_subindex: int = NO_INDEX
 
+    def has_index(self) -> bool:
+        return self.rsps_index != NO_INDEX
+
+    def has_subtitle(self) -> bool:
+        return self.rsps_subtitle != NO_CONTENT
+
+    def has_subindex(self) -> bool:
+        return self.rsps_subindex != NO_INDEX
+
+    def is_root(self) -> bool:
+        return not self.has_index()
+
+    def list_url(self) -> bool:
+        return SEP.join([
+            DEFAULT_RSPS_ROOT,
+            str(self.rsps_index),
+            self.rsps_subtitle
+        ])
+
     def __str__(self) -> str:
         value = DEFAULT_RSPS_ROOT
-        if self.rsps_index != NO_INDEX:
+        if self.has_index():
             value = f"{value}{SEP}{self.rsps_index}"
 
-        if self.rsps_subtitle != "":
+        if self.has_subtitle():
             value = f"{value}{SEP}{self.rsps_subtitle}"
         
-        if self.rsps_subindex != NO_INDEX:
+        if self.has_subindex():
             value = f"{value}{SEP}{self.rsps_subindex}"
 
         return value

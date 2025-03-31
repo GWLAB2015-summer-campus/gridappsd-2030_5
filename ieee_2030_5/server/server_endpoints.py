@@ -22,6 +22,7 @@ from ieee_2030_5.server.base_request import RequestOp
 from ieee_2030_5.server.dcapfs import Dcap
 from ieee_2030_5.server.derfs import DERProgramRequests, DERRequests
 from ieee_2030_5.server.enddevicesfs import (EDevRequests, FSARequests, SDevRequests)
+from ieee_2030_5.server.responsefs import RspsRequests
 # module level instance of hrefs class.
 from ieee_2030_5.server.meteringfs import (MirrorUsagePointRequest, UsagePointRequest)
 from ieee_2030_5.server.timefs import TimeRequest
@@ -208,5 +209,4 @@ class ServerEndpoints:
         return RequestOp(server_endpoints=self).build_response_from_dataclass(obj)
 
     def _rsps(self, path) -> Response:
-        rsps_href = hrefs.ResponseHref.parse(path)
-        return "response"
+        return RspsRequests(server_endpoints=self).execute()
