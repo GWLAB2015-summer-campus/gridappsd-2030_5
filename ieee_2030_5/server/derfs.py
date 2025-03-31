@@ -126,9 +126,7 @@ class DERProgramRequests(RequestOp):
                 retval = adpt.GlobalmRIDs.get_item(retval.mRID)
         elif parsed.at(2) == hrefs.DDERC:
             _log.debug(f"Retrieving DDERC")
-            retval = adpt.ListAdapter.get_single(request.path)
-            if hasattr(retval, 'mRID'):
-                retval = adpt.GlobalmRIDs.get_item(retval.mRID)
+            retval = get_href(request.path)
         elif parsed.at(2) == hrefs.DERCURVE:
             _log.debug(f"Retrieving DC")
             retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)

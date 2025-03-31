@@ -20,7 +20,7 @@ _log = logging.getLogger(__name__)
 class ServerOperation:
 
     def __init__(self):
-        if 'ieee_2030_5_peercert' not in request.environ:
+        if 'ieee_2030_5_peercert' not in request.environ and not 'ieee_2030_5_tls_bypass' in request.environ:
             raise werkzeug.exceptions.Forbidden()
         self._headers = {'Content-Type': SEP_XML}
         self._environ = request.environ

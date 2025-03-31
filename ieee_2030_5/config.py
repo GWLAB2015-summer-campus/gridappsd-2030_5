@@ -191,7 +191,7 @@ class ServerConfiguration:
     tls_repository: str
 
     server: str
-    port: int
+    port: int | None = None
 
     service_name: str = "IEEE_2030_5"
     simulation_id: str | None = None
@@ -327,3 +327,5 @@ class ServerConfiguration:
             if test_lfdi == int(lfdi):
                 return d.pin
         raise NotFoundError(f"The device_id: {lfdi} was not found.")
+    
+    non_tls: bool = False

@@ -53,7 +53,6 @@ tls_repository: TLSRepository = None
 # _log_protocol = logging.getLogger("protocol")
 # _log_protocol.addHandler(LogProtocolHandler(logging.DEBUG))
 
-
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
     """
     We subclass this class so that we can gain access to the connection
@@ -99,6 +98,8 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
             # Short circuit the connection from the client and utilize http rather
             # than x509 certificates.
             if self.config.lfdi_client:
+                _log.debug("Using lfdi from config.")
+                environ['ieee_2030_5_tls_bypass'] = True
                 environ['ieee_2030_5_lfdi'] = self.config.lfdi_client
                 environ['ieee_2030_5_sfdi'] = sfdi_from_lfdi(self.config.lfdi_client)
                 return environ
@@ -109,7 +110,15 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
             if PeerCertWSGIRequestHandler.is_admin(environ['PATH_INFO']):
                 cert, key = self.tlsrepo.get_file_pair("admin")
                 x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+            elif self.config.non_tls:
+                _log.debug("Using non-tls mode.")
+                environ['ieee_2030_5_tls_bypass'] = True
+                environ["ieee_2030_5_lfdi"] = self.tlsrepo.lfdi(self.config.devices[0].id)
+                environ["ieee_2030_5_sfdi"] = sfdi_from_lfdi(environ["ieee_2030_5_lfdi"])
+                environ['ieee_2030_5_serial_number'] = "00000000"
+                return environ
             else:
+                _log.debug("Using x509 from connection.")
                 x509_binary = self.connection.getpeercert(True)
                 x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509_binary)
             environ['ieee_2030_5_peercert'] = x509
@@ -379,10 +388,10 @@ def __build_app__(config: ServerConfiguration, tlsrepo: TLSRepository) -> Flask:
     return app
 
 
-def run_app(app: Flask, host, ssl_context, request_handler, port, **kwargs):
+def run_app(app: Flask, host, ssl_context, request_handler, port, is_tls, **kwargs):
     exclude_patterns = ["data_store/**", "docs/**", "examples/**", "ieee_2030_5_gui/**", "logs/**"]
     app.run(host=host,
-            ssl_context=ssl_context,
+            ssl_context= ssl_context if is_tls else None,
             request_handler=request_handler,
             port=port,
             exclude_patterns=exclude_patterns,
@@ -399,7 +408,7 @@ def run_server(config: ServerConfiguration, tlsrepo: TLSRepository, **kwargs):
     ssl_context = None
     # If lfd_client is specified then we are running in http mode so we don'
     # establish an sslcontext.
-    if not config.lfdi_client:
+    if not config.lfdi_client and not config.non_tls:
         ssl_context = __build_ssl_context__(tlsrepo)
 
     try:
@@ -417,6 +426,7 @@ def run_server(config: ServerConfiguration, tlsrepo: TLSRepository, **kwargs):
             ssl_context=ssl_context,
             port=port,
             request_handler=PeerCertWSGIRequestHandler,
+            is_tls=not config.non_tls,
             **kwargs)
 
 

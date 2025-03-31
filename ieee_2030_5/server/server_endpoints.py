@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from http.client import BAD_REQUEST
 from typing import Optional
 
-import pytz
 import tzlocal
 import werkzeug.exceptions
 from flask import Flask, Response, request
@@ -23,6 +22,7 @@ from ieee_2030_5.server.base_request import RequestOp
 from ieee_2030_5.server.dcapfs import Dcap
 from ieee_2030_5.server.derfs import DERProgramRequests, DERRequests
 from ieee_2030_5.server.enddevicesfs import (EDevRequests, FSARequests, SDevRequests)
+from ieee_2030_5.server.responsefs import RspsRequests
 # module level instance of hrefs class.
 from ieee_2030_5.server.meteringfs import (MirrorUsagePointRequest, UsagePointRequest)
 from ieee_2030_5.server.timefs import TimeRequest
@@ -120,6 +120,9 @@ class ServerEndpoints:
         app.add_url_rule(f"/<regex('{hrefs.LOG}{hrefs.MATCH_REG}'):path>",
                          view_func=self._log,
                          methods=["GET", "POST"])
+        app.add_url_rule(f"/<regex('{hrefs.RSPS}{hrefs.MATCH_REG}'):path>",
+                         view_func=self._rsps,
+                         methods=["GET", "POST"])
         # rulers = (
         #     (hrefs.der_urls, self._der),
         #     #(hrefs.edev_urls, self._edev),
@@ -204,3 +207,6 @@ class ServerEndpoints:
         _list = adpt.ListAdapter.get_list(request.path)
         obj = m.DERCurveList(href=path, DERCurve=_list, all=len(_list))
         return RequestOp(server_endpoints=self).build_response_from_dataclass(obj)
+
+    def _rsps(self, path) -> Response:
+        return RspsRequests(server_endpoints=self).execute()

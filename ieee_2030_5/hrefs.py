@@ -61,6 +61,7 @@ MATCH_REG = "[a-zA-Z0-9_]*"
 
 # Used as a sentinal value when we only want the href of the root
 NO_INDEX = -1
+NO_CONTENT = ""
 
 
 class HrefParser:
@@ -75,7 +76,7 @@ class HrefParser:
         Ex: /edev_12_dstat has an index of 12 so this will return true
         Ex: /edev has no index so this will return false
         """
-        return len(self._split) > 1
+        return len(self._split) > ( 1 if SEP != '/' else 2)
 
     def count(self) -> int:
         return len(self._split)
@@ -122,7 +123,7 @@ class EndDeviceHref:
 
         self.index = index
         if edev_href is not None:
-            self.index = int(edev_href.split(SEP)[1])
+            self.index = int(edev_href.split(SEP)[-1])
 
         self._root = SEP.join([DEFAULT_EDEV_ROOT, str(self.index)])
 
@@ -739,6 +740,66 @@ class MirrorUsagePointHref:
         if len(items) == 2:
             return MirrorUsagePointHref(items[1])
 
+@dataclass
+class ResponseHref:
+    rsps_index: int = NO_INDEX
+    rsps_subtitle: str = ""
+    rsps_subindex: int = NO_INDEX
+
+    def has_index(self) -> bool:
+        return self.rsps_index != NO_INDEX
+
+    def has_subtitle(self) -> bool:
+        return self.rsps_subtitle != NO_CONTENT
+
+    def has_subindex(self) -> bool:
+        return self.rsps_subindex != NO_INDEX
+
+    def is_root(self) -> bool:
+        return not self.has_index()
+
+    def list_url(self) -> bool:
+        return SEP.join([
+            DEFAULT_RSPS_ROOT,
+            str(self.rsps_index),
+            self.rsps_subtitle
+        ])
+
+    def __str__(self) -> str:
+        value = DEFAULT_RSPS_ROOT
+        if self.has_index():
+            value = f"{value}{SEP}{self.rsps_index}"
+
+        if self.has_subtitle():
+            value = f"{value}{SEP}{self.rsps_subtitle}"
+        
+        if self.has_subindex():
+            value = f"{value}{SEP}{self.rsps_subindex}"
+
+        return value
+
+    def parse(path: str) -> ResponseHref:
+        split_pth = path.split(SEP)
+
+        if split_pth[0] != RSPS and split_pth[0][1:] != RSPS:
+            raise ValueError(f"Must start with {RSPS}")
+
+        if len(split_pth) == 1:
+            return ResponseHref(NO_INDEX)
+        elif len(split_pth) == 2:
+            return ResponseHref(int(split_pth[1]))
+        elif len(split_pth) == 3:
+            return ResponseHref(int(split_pth[1]), rsps_subtitle=split_pth[2])
+        elif len(split_pth) == 4:
+            return ResponseHref(int(split_pth[1]),
+                            rsps_subtitle=split_pth[2],
+                            rsps_subindex=int(split_pth[3]))
+        else:
+            raise ValueError("Out of bounds parsing.")
+
+    def __eq__(self, other: object) -> bool:
+        return other.rsps_index == self.rsps_index and other.rsps_subtitle == self.rsps_subtitle, \
+            other.rsps_subindex == self.rsps_subindex
 
 def usage_point_href(usage_point_index: int | str = NO_INDEX,
                      meter_reading_list: bool = False,

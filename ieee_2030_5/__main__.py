@@ -54,7 +54,7 @@ import yaml
 from werkzeug.serving import BaseWSGIServer
 
 import ieee_2030_5.hrefs as hrefs
-from ieee_2030_5.certs import TLSRepository
+from ieee_2030_5.certs import TLSRepository, NonTLSRepository
 from ieee_2030_5.config import InvalidConfigFile, ServerConfiguration
 from ieee_2030_5.data.indexer import add_href
 from ieee_2030_5.adapters.gridappsd_adapter import GridAPPSDAdapter
@@ -73,6 +73,15 @@ class ServerThread(threading.Thread):
     def shutdown(self):
         _log.info("shutting down server")
         self.server.shutdown()
+
+def get_non_tls_repository(cfg: ServerConfiguration) -> NonTLSRepository:
+    non_tlsrepo = NonTLSRepository()
+
+    for d in cfg.devices:
+        if not non_tlsrepo.has_device(d.id):
+            non_tlsrepo.register_device(d)
+    
+    return non_tlsrepo
 
 
 def get_tls_repository(cfg: ServerConfiguration,
@@ -213,6 +222,12 @@ def _main():
 
     config = ServerConfiguration(**cfg_dict)
 
+    if config.port is None:
+        if config.non_tls:
+            config.port = 8080
+        else:
+            config.port = 8090
+
     os.environ['GRIDAPPSD_SERVICE_NAME'] = config.service_name
     if config.simulation_id:
         os.environ['GRIDAPPSD_SIMULATION_ID'] = config.simulation_id
@@ -252,7 +267,10 @@ def _main():
         sys.stderr.write("Can't show lfdi when creating certificates.\n")
         sys.exit(1)
 
-    tls_repo = get_tls_repository(config, create_certificates_for_devices=opts.create_certs)
+    if config.non_tls:
+        tls_repo = get_non_tls_repository(config)
+    else:
+        tls_repo = get_tls_repository(config, create_certificates_for_devices=opts.create_certs)
     gridappsd_adpt = None
 
     if config.gridappsd is not None:

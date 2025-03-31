@@ -1,6 +1,8 @@
 import logging
 from typing import Optional
+from datetime import datetime
 
+import zoneinfo
 import werkzeug.exceptions
 from flask import Response, request
 
@@ -10,7 +12,7 @@ import ieee_2030_5.models as m
 from ieee_2030_5.data.indexer import add_href, get_href
 from ieee_2030_5.models import Registration
 from ieee_2030_5.server.base_request import RequestOp
-from ieee_2030_5.types_ import Lfdi
+from ieee_2030_5.types_ import Lfdi, format_time
 from ieee_2030_5.utils import dataclass_to_xml, xml_to_dataclass
 
 _log = logging.getLogger(__name__)
@@ -56,10 +58,29 @@ class EDevRequests(RequestOp):
 
         """
         # request.data should have xml data.
+
         if not request.data:
             raise werkzeug.exceptions.Forbidden()
+        
+        edev_href = hrefs.HrefParser(request.path)
 
-        ed: m.EndDevice = xml_to_dataclass(request.data.decode('utf-8'))
+        eds = adpt.EndDeviceAdapter.fetch_all()
+
+        if edev_href.has_index():
+            idx = int(request.path.split(hrefs.SEP)[-2])
+            ed = eds[idx]
+
+            if request.path == ed.LogEventListLink.href:
+                data: m.LogEvent = xml_to_dataclass(request.data.decode('utf-8'))
+                data_type = type(data)
+                if not isinstance(data, m.LogEvent):
+                    raise werkzeug.exceptions.Forbidden()
+
+                if not data.createdDateTime:
+                    data.createdDateTime = format_time(datetime.utcnow().replace(tzinfo=zoneinfo.ZoneInfo('UTC')))
+                adpt.ListAdapter.append(request.path, data)
+            return Response(status=201)
+
 
         if not isinstance(ed, m.EndDevice):
             raise werkzeug.exceptions.Forbidden()
@@ -89,7 +110,7 @@ class EDevRequests(RequestOp):
             /edev/0/di
             /edev/0/rg
             /edev/0/der
-
+            
         """
         # TODO start implementing these.
         start = int(request.args.get("s", 0))
@@ -99,8 +120,8 @@ class EDevRequests(RequestOp):
         edev_href = hrefs.HrefParser(request.path)
 
         ed = adpt.EndDeviceAdapter.fetch_by_property('lFDI', self.lfdi)
+        eds = adpt.EndDeviceAdapter.fetch_all(start=start, after=after, limit=limit)
 
-        # /edev_0_dstat
         if request.path == ed.DERListLink.href:
             retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
         elif request.path == ed.LogEventListLink.href:
@@ -113,12 +134,13 @@ class EDevRequests(RequestOp):
             else:
                 retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
         elif not edev_href.has_index():
-            retval = m.EndDeviceList(href=request.path, all=1, results=1, EndDevice=[ed])
+            retval = m.EndDeviceList(href=request.path, all=adpt.EndDeviceAdapter.size(), results=len(eds), EndDevice=eds)
         else:
             if retval := get_href(request.path):
                 pass
             else:
-                retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
+                index = int(request.path.split(hrefs.SEP)[-1])
+                retval = eds[index]
 
         # if adpt.ListAdapter.has_list(request.path):
         #     retval = adpt.ListAdapter.get_resource_list(request.path)

@@ -9,8 +9,9 @@ import shutil
 import yaml
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+from dataclasses import dataclass
 
-__all__ = ['TLSRepository']
+__all__ = ['TLSRepository', 'NonTLSRepository']
 
 from ieee_2030_5.types_ import Lfdi, PathStr
 from ieee_2030_5.utils.tls_wrapper import OpensslWrapper, TLSWrap
@@ -308,6 +309,40 @@ class TLSRepository:
     def __get_combined_file__(self, common_name: str) -> Path:
         return self._combined_dir.joinpath(f"{common_name}-combined.{PRIVATE_EXTENTION}")
 
+find = lambda fun, lst: next((x for x in lst if fun(x)), None)
+
+class NonTLSRepository:
+
+    @dataclass
+    class _Device:
+        id: str
+        name: str
+        lfdi: str
+
+    def __init__(self):
+        self.devices = []
+
+    def has_device(self, common_name: str) -> bool:
+        return common_name in [ d.name for d in self.devices ]
+
+    def register_device(self, device):
+        self.devices.append(self._Device(id=device.id, name=device.id, lfdi=device.lfdi))
+
+    def lfdi(self, device_id: str) -> Optional[Lfdi]:
+        device = find(lambda d : d.id == device_id, self.devices)
+        return device.lfdi if device is not None else None
+
+    def sfdi(self, device_id: str) -> int:
+        lfdi_ = self.lfdi(device_id)
+        return sfdi_from_lfdi(lfdi_)
+
+    def get_common_name(self, device_id: str) -> Optional[str]:
+        device = find(lambda d : d.id == device_id, self.devices)
+        return device.name if device is not None else None
+
+    def find_device_id_from_sfdi(self, sfdi: int) -> Optional[str]:
+        device = find(lambda d : self.sfdi(d.id) == sfdi, self.devices)
+        return device.id if device is not None else None
 
 def _main():
     parser = argparse.ArgumentParser()
