@@ -57,6 +57,7 @@ import ieee_2030_5.hrefs as hrefs
 from ieee_2030_5.certs import TLSRepository, NonTLSRepository
 from ieee_2030_5.config import InvalidConfigFile, ServerConfiguration
 from ieee_2030_5.data.indexer import add_href
+from ieee_2030_5.db.conn import init_db
 
 
 class ServerThread(threading.Thread):
@@ -216,6 +217,8 @@ def _main():
 
     os.environ["IEEE_2030_5_CONFIG_FILE"] = str(
         Path(opts.config).expanduser().resolve(strict=True))
+
+    init_db()
 
     cfg_dict = yaml.safe_load(Path(opts.config).expanduser().resolve(strict=True).read_text())
 

@@ -765,6 +765,12 @@ class ResponseHref:
             self.rsps_subtitle
         ])
 
+    def make_full_url(self, subindex) -> str:
+        return SEP.join([
+            self.list_url(),
+            str(subindex)
+        ])
+
     def __str__(self) -> str:
         value = DEFAULT_RSPS_ROOT
         if self.has_index():

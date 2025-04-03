@@ -149,3 +149,6 @@ cython_debug/
 
 # nohup log
 *.out
+
+# db config
+ieee_2030_5/db/dbconfig.yml

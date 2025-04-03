@@ -2787,24 +2787,21 @@ class Response(Resource):
     createdDateTime: Optional[int] = field(default=None, metadata={
         "type": "Element",
     })
-    endDeviceLFDI: Optional[bytes] = field(default=None,
+    endDeviceLFDI: Optional[str] = field(default=None,
                                            metadata={
                                                "type": "Element",
                                                "required": True,
-                                               "max_length": 20,
-                                               "format": "base16",
+                                               "max_length": 40,
                                            })
     status: Optional[int] = field(default=None, metadata={
         "type": "Element",
     })
-    subject: Optional[bytes] = field(default=None,
+    subject: Optional[str] = field(default=None,
                                      metadata={
                                          "type": "Element",
                                          "required": True,
-                                         "max_length": 16,
-                                         "format": "base16",
+                                         "max_length": 40,
                                      })
-
 
 @dataclass
 class SelfDeviceLink(Link):
@@ -7803,6 +7800,15 @@ class EndDeviceList(SubscribableList):
         "type": "Attribute",
     })
 
+@dataclass
+class ResponseList(SubscribableList):
+
+    class Meta:
+        namespace = "urn:ieee:std:2030.5:ns"
+
+    Response: List[Response] = field(default_factory=list, metadata={
+        "type": "Element",
+    })
 
 @dataclass
 class FlowReservationResponseList(SubscribableList):

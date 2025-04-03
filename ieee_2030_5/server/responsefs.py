@@ -12,6 +12,10 @@ from ieee_2030_5.server.base_request import RequestOp
 from ieee_2030_5.types_ import format_time
 from ieee_2030_5.utils import dataclass_to_xml, xml_to_dataclass
 
+from ieee_2030_5.db.conn import get_db_session
+import ieee_2030_5.db.tables as t
+from sqlalchemy import select, func
+
 _log = logging.getLogger(__name__)
 
 class RspsRequests(RequestOp):
@@ -32,7 +36,23 @@ class RspsRequests(RequestOp):
             
             if not data.createdDateTime:
                 data.createdDateTime = format_time(datetime.utcnow().replace(tzinfo=zoneinfo.ZoneInfo('UTC')))
-            adpt.ListAdapter.append_and_increment_href(request.path, data)
+
+            try:
+                with get_db_session() as session:
+                    response_row = t.ResponseTable(
+                        list_link_id = rsps_href.rsps_index,
+                        end_device_lfdi = data.endDeviceLFDI,
+                        status = data.status,
+                        subject = data.subject,
+                        create_data_time = datetime.utcfromtimestamp(data.createdDateTime)
+                    )
+                    session.add(response_row)
+                    session.commit()
+            except Exception as e:
+                _log.error(f"Faild to Insert in DB : {data}")
+                _log.error(e)
+                raise werkzeug.exceptions.InternalServerError()
+
             return Response(status=201)
         else:
             raise werkzeug.exceptions.NotFound()
@@ -45,10 +65,53 @@ class RspsRequests(RequestOp):
         rsps_href = hrefs.ResponseHref.parse(request.path)
 
         if rsps_href.has_subtitle():
-            if rsps_href.has_subindex():
-                retval = adpt.ListAdapter.get(rsps_href.list_url(), rsps_href.rsps_subindex)
-            else:
-                retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
-            return self.build_response_from_dataclass(retval)
+            try:
+                with get_db_session() as session:
+                    if rsps_href.has_subindex():
+                        selected = session.execute(
+                                          select(t.ResponseTable).
+                                          filter_by(id=rsps_href.subindex)
+                                      ).scalar_one()
+                        retval = m.Response(
+                                href = rsps_href.make_full_url(selected.id),
+                                createdDateTime = format_time(selected.create_data_time.strftime("%Y%m%d%H%M%S")),
+                                endDeviceLFDI = selected.end_device_lfdi,
+                                status = selected.status,
+                                subject = selected.subject
+                            )
+                    else:
+                        all_cnt = session.execute(
+                            select(func.count('*'))
+                            .select_from(t.ResponseTable).
+                            filter_by(list_link_id=rsps_href.rsps_index)
+                        ).scalar()
+                        selected_list = session.execute(
+                                          select(t.ResponseTable).
+                                          filter_by(list_link_id=rsps_href.rsps_index).
+                                          order_by(
+                                            t.ResponseTable.create_data_time.desc(),
+                                            t.ResponseTable.end_device_lfdi).
+                                          limit(limit).
+                                          offset(start)
+                                        ).scalars().all()
+                        retval = m.ResponseList(
+                            href = rsps_href.list_url(),
+                            subscribable = False,
+                            all = all_cnt,
+                            results = len(selected_list),
+                            Response = [
+                            m.Response(
+                                href = rsps_href.make_full_url(r.id),
+                                createdDateTime = r.create_data_time.strftime("%Y%m%d%H%M%S"),
+                                endDeviceLFDI = r.end_device_lfdi,
+                                status = r.status,
+                                subject = r.subject
+                            ) for r in selected_list
+                        ])
+                    return self.build_response_from_dataclass(retval)
+            except Exception as e:
+                _log.error(f"Faild to Select in DB")
+                _log.error(e)
+                raise werkzeug.exceptions.InternalServerError()
         else:
             raise werkzeug.exceptions.NotFound()
