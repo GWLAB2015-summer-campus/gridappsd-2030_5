@@ -99,26 +99,6 @@ fsas:
     programs:
       - Default Program
 
-programs:
-  - description: Program1
-    primacy: 0
-    DefaultDERControl:
-      setESDelay: 30
-      setGradW: 1000
-
-      DERControlBase:
-        opModConnect: true
-        opModEnergize: true
-  - description: Program2
-    primacy: 0
-    DefaultDERControl:
-      setESDelay: 30
-      setGradW: 1000
-
-      DERControlBase:
-        opModConnect: true
-        opModEnergize: true
-
 default_der_control:
   DERControlBase:
     opModConnect: True

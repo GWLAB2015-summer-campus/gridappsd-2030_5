@@ -3,14 +3,14 @@ from typing import Optional
 from pprint import pformat
 
 from flask import Response, request
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, InternalServerError
 
 import ieee_2030_5.adapters as adpt
 from ieee_2030_5.data.indexer import add_href, get_href
 import ieee_2030_5.hrefs as hrefs
-import ieee_2030_5.models as m
 from ieee_2030_5.server.base_request import RequestOp
 from ieee_2030_5.utils import xml_to_dataclass
+import ieee_2030_5.db.tables as t
 
 import logging
 
@@ -107,18 +107,38 @@ class DERProgramRequests(RequestOp):
 
         parsed = hrefs.HrefParser(request.path)
 
-        if not parsed.has_index():
-            retval = adpt.ListAdapter.get_resource_list(hrefs.DEFAULT_DERP_ROOT, start, after,
-                                                        limit)
-        elif parsed.count() == 2:
-            retval = adpt.ListAdapter.get(hrefs.DEFAULT_DERP_ROOT, parsed.at(1))
+        if parsed.count() <= 2:
+            try:
+                if not parsed.has_index():
+                    # get DER Program List
+                    all_cnt, selected_list = t.DERProgramTable.get_all(
+                        start = s,
+                        limit = l,
+                        order_by=(
+                            t.DERProgramTable.primacy,
+                            t.DERProgramTable.mrid.desc()
+                        )
+                    )
+                    retval = m.DERProgramList(
+                        href = request.path,
+                        subscribable = False,
+                        all = all_cnt,
+                        results = len(selected_list),
+                        DERProgram = [derp.to_model() for derp in selected_list]
+                    )
+                else:
+                    # get DER Program by ID
+                    retval = t.DERProgramTable.get_by_id(parsed.at(1)).to_model()
+            except Exception as e:
+                raise InternalServerError()
         elif parsed.count() == 4:
-            _log.debug("Retrieving DER Control list")
-            # Retrieve the list of controls from storage
-            dercl = get_href(parsed.join(3))
-            assert isinstance(dercl, m.DERControlList)
-            # The index that we want to get the control from.
-            retval = dercl.DERControl[parsed.at(3)]
+            # get DER Control
+            retval = t.DERControlTable.get_one(
+                where = (
+                    t.DERControlTable.id == parsed.at(3) and 
+                    t.DERControlTable.list_link_id == parsed.at(1)
+                )
+            ).to_model()
         elif parsed.at(2) == hrefs.DERC:
             _log.debug(f"Retrieving DERC")
             retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
@@ -126,16 +146,16 @@ class DERProgramRequests(RequestOp):
                 retval = adpt.GlobalmRIDs.get_item(retval.mRID)
         elif parsed.at(2) == hrefs.DDERC:
             _log.debug(f"Retrieving DDERC")
-            retval = get_href(request.path)
+            retval = get_href(hrefs.DERProgramHref(0).default_control_href)
         elif parsed.at(2) == hrefs.DERCURVE:
             _log.debug(f"Retrieving DC")
             retval = adpt.ListAdapter.get_resource_list(request.path, start, after, limit)
         # elif parsed.at(2) == hrefs.DDERC:
         #     retval = adpt.DERControlAdapter.fetch_at(parsed.at(3))
-        else:
-            retval = get_href(request.path)
 
         if not retval:
             raise NotFound(f"{request.path}")
+
+        print(retval)
 
         return self.build_response_from_dataclass(retval)

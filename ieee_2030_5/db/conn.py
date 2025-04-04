@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from ieee_2030_5.db.tables import ResponseTable
+from ieee_2030_5.db.tables import tableClass
 import yaml
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -33,7 +33,8 @@ def init_db(file: Path = Path("ieee_2030_5/db/dbconfig.yml")):
         
         global engine
         engine = create_engine(SQLALCHEMY_DATABASE_URL)
-        ResponseTable.metadata.create_all(engine)
+        for tc in tableClass:
+            tc.metadata.create_all(engine)
     except Exception as e:
         raise InvalidDBInfoFile(e)
 
