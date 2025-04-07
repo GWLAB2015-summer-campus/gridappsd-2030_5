@@ -190,6 +190,8 @@ class ServerConfiguration:
 
     tls_repository: str
 
+    db_info_file: str
+
     server: str
     port: int | None = None
 

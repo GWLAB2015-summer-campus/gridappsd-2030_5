@@ -218,11 +218,11 @@ def _main():
     os.environ["IEEE_2030_5_CONFIG_FILE"] = str(
         Path(opts.config).expanduser().resolve(strict=True))
 
-    init_db()
-
     cfg_dict = yaml.safe_load(Path(opts.config).expanduser().resolve(strict=True).read_text())
 
     config = ServerConfiguration(**cfg_dict)
+
+    init_db(config)
 
     if config.port is None:
         if config.non_tls:

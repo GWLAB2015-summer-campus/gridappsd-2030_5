@@ -1,13 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from ieee_2030_5.db.tables import tableClass
+from ieee_2030_5.db.tables import tableClass, DefaultDERControlTable
+from ieee_2030_5.config import InvalidConfigFile, ServerConfiguration
 import yaml
 from pathlib import Path
 from dataclasses import dataclass, field
-
-class InvalidDBInfoFile(Exception):
-    pass
 
 @dataclass
 class DBInfo:
@@ -18,9 +16,10 @@ class DBInfo:
 
 engine = None
 
-def init_db(file: Path = Path("ieee_2030_5/db/dbconfig.yml")):
+def init_db(config: ServerConfiguration):
+    file = Path(config.db_info_file)
     if not file.exists():
-        raise InvalidDBInfoFile(f"DB Information File does not exist: {file}")
+        raise InvalidConfigFile(f"DB Information File does not exist: {file}")
     yaml_dict = yaml.safe_load(file.read_text())
     try:
         db_info = DBInfo(
@@ -35,6 +34,9 @@ def init_db(file: Path = Path("ieee_2030_5/db/dbconfig.yml")):
         engine = create_engine(SQLALCHEMY_DATABASE_URL)
         for tc in tableClass:
             tc.metadata.create_all(engine)
+
+        if config.default_der_control:
+            DefaultDERControlTable.set_server_default(config.default_der_control)
     except Exception as e:
         raise InvalidDBInfoFile(e)
 
@@ -42,5 +44,5 @@ def get_db_session():
     if engine is None:
         raise InvalidDBInfoFile("DB engine is None")
     else:
-        with Session(engine) as session:
+        with Session(engine, expire_on_commit=False) as session:
             return session
