@@ -51,12 +51,47 @@ class CADoesNotExist(Exception):
     def __str__(self) -> str:
         return "The CA certificate does not exist!"
 
+def clean_none_values_recursively(obj):
+    if obj is None:
+        return None
+    
+    if hasattr(obj, "__dataclass_fields__"):
+        clean_dict = {}
+        for key, value in obj.__dict__.items():
+            cleaned_value = clean_none_values_recursively(value)
+            if cleaned_value is not None:
+                clean_dict[key] = cleaned_value
+        
+        if clean_dict:
+            new_obj = obj.__class__(**clean_dict)
+            return new_obj
+        return None
+    
+    elif isinstance(obj, list):
+        clean_list = []
+        for item in obj:
+            cleaned_item = clean_none_values_recursively(item)
+            if cleaned_item is not None:
+                clean_list.append(cleaned_item)
+        return clean_list if clean_list else None
+    
+    elif isinstance(obj, dict):
+        clean_dict = {}
+        for key, value in obj.items():
+            cleaned_value = clean_none_values_recursively(value)
+            if cleaned_value is not None:
+                clean_dict[key] = cleaned_value
+        return clean_dict if clean_dict else None
+    
+    else:
+        return obj
 
 def serialize_dataclass(obj: dataclass) -> str:
     """
     Serializes a dataclass that was created via xsdata to an xml string for
     returning to a client.
     """
+    obj = clean_none_values_recursively(obj)
     return __serializer__.render(obj, ns_map=__ns_map__)
 
 
