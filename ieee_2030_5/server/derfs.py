@@ -212,7 +212,17 @@ class DERProgramRequests(RequestOp):
                     retval = t.DERControlTable.get_one(
                         where = (
                             t.DERControlTable.id == parsed.at(3) and 
-                            t.DERControlTable.list_link_id == parsed.at(1)
+                            t.DERControlTable.der_program_id == parsed.at(1)
+                        )
+                    )
+                    if retval is not None:
+                        retval = retval.to_model()
+                elif parsed.at(2) == hrefs.DERCURVE:
+                    # get DER Curve
+                    retval = t.DERCurveTable.get_one(
+                        where = (
+                            t.DERCurveTable.id == parsed.at(3) and 
+                            t.DERCurveTable.der_program_id == parsed.at(1)
                         )
                     )
                     if retval is not None:
@@ -247,7 +257,7 @@ class DERProgramRequests(RequestOp):
                     retval = retval.to_model()
             elif parsed.at(2) == hrefs.DERCURVE:
                 # get DER Curve List
-                all_cnt, selected_list = t.DERCurveTable.get_all_with_curve_data(
+                all_cnt, selected_list = t.DERCurveTable.get_all(
                     start = start,
                     limit = limit,
                     order_by=(

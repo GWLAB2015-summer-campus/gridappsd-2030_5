@@ -626,24 +626,6 @@ class DERCurveTable(Base):
     der_program_id: Mapped[int] = mapped_column(ForeignKey("der_program.id"), primary_key=True)
     derProgram = relationship("DERProgramTable", back_populates="derCurves")
 
-    @classmethod
-    def get_all_with_curve_data(cls, start=0, limit=-1, where=None, order_by=None):
-        all_cnt, selected_list = cls.get_all(
-            start=start,
-            limit=limit,
-            where=where,
-            order_by=order_by
-        )
-
-        for selected in selected_list:
-            _, cd_selected = CurveDataTable.get_all(
-                where=(
-                    CurveDataTable.der_curve_id == selected.id
-                )
-            )
-            selected.curve_data = cd_selected
-        return all_cnt, selected_list
-
     def to_model(self):
         return m.DERCurve(
             description = self.description,
