@@ -134,7 +134,7 @@ class DERProgramRequests(RequestOp):
                 # create DER Program
                 data: m.DERProgram = xml_to_dataclass(request.data.decode('utf-8'), m.DERProgram)
                 if not isinstance(data, m.DERProgram):
-                    raise werkzeug.exceptions.BadRequest()
+                    raise BadRequest()
                 
                 derProgram = t.DERProgramTable.from_model(data)
                 derProgram.add()
@@ -145,7 +145,7 @@ class DERProgramRequests(RequestOp):
                 # create DER Control
                 data: m.DERControl = xml_to_dataclass(request.data.decode('utf-8'), m.DERControl)
                 if not isinstance(data, m.DERControl):
-                    raise werkzeug.exceptions.BadRequest()
+                    raise BadRequest()
    
                 derControl = t.DERControlTable.from_model(data, der_program_id=parsed.at(1))
                 derControl.add()
@@ -154,7 +154,7 @@ class DERProgramRequests(RequestOp):
                 # create DER Curve
                 data: m.DERCurve = xml_to_dataclass(request.data.decode('utf-8'), m.DERCurve)
                 if not isinstance(data, m.DERCurve):
-                    raise werkzeug.exceptions.BadRequest()
+                    raise BadRequest()
                     
                 derCurve = t.DERCurveTable.from_model(data, der_program_id=parsed.at(1))
                 derCurve.add()
@@ -196,7 +196,7 @@ class DERProgramRequests(RequestOp):
                     )
                     retval = m.DERProgramList(
                         href = request.path,
-                        subscribable = False,
+                        subscribable = 0,
                         all = all_cnt,
                         results = len(selected_list),
                         DERProgram = [derp.to_model() for derp in selected_list]
@@ -244,7 +244,7 @@ class DERProgramRequests(RequestOp):
                 )
                 retval = m.DERControlList(
                     href = request.path,
-                    subscribable = False,
+                    subscribable = 0,
                     all = all_cnt,
                     results = len(selected_list),
                     DERControl = [derc.to_model() for derc in selected_list]

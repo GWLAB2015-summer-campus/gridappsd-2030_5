@@ -12,6 +12,7 @@ from typing import Optional, List
 import ieee_2030_5.models as m
 import ieee_2030_5.hrefs as hrefs
 from ieee_2030_5.types_ import format_time
+from ieee_2030_5.utils import uuid_2030_5
 
 _log = logging.getLogger(__name__)
 
@@ -322,17 +323,39 @@ class DERControlBaseColumns:
                 kUF = self.opModFreqDroop.kuf,
                 openLoopTms = self.opModFreqDroop.open_loop_tms
             ),
-            opModFreqWatt = self.op_mod_freq_watt,
-            opModHFRTMayTrip = self.op_mod_hfrt_may_trip,
-            opModHFRTMustTrip = self.op_mod_hfrt_must_trip,
-            opModHVRTMayTrip = self.op_mod_hvrt_may_trip,
-            opModHVRTMomentaryCessation = self.op_mod_hvrt_momentary_cessation,
-            opModHVRTMustTrip = self.op_mod_hvrt_must_trip,
-            opModLFRTMayTrip = self.op_mod_lfrt_may_trip,
-            opModLFRTMustTrip = self.op_mod_lfrt_must_trip,
-            opModLVRTMayTrip = self.op_mod_lvrt_may_trip,
-            opModLVRTMomentaryCessation = self.op_mod_lvrt_momentary_cessation,
-            opModLVRTMustTrip = self.op_mod_lvrt_must_trip,
+            opModFreqWatt = m.DERCurveLink(
+                href = self.op_mod_freq_watt
+            ),
+            opModHFRTMayTrip = m.DERCurveLink(
+                href = self.op_mod_hfrt_may_trip
+            ),
+            opModHFRTMustTrip = m.DERCurveLink(
+                href = self.op_mod_hfrt_must_trip
+            ),
+            opModHVRTMayTrip = m.DERCurveLink(
+                href = self.op_mod_hvrt_may_trip
+            ),
+            opModHVRTMomentaryCessation = m.DERCurveLink(
+                href = self.op_mod_hvrt_momentary_cessation
+            ),
+            opModHVRTMustTrip = m.DERCurveLink(
+                href = self.op_mod_hvrt_must_trip
+            ),
+            opModLFRTMayTrip = m.DERCurveLink(
+                href = self.op_mod_lfrt_may_trip
+            ),
+            opModLFRTMustTrip = m.DERCurveLink(
+                href = self.op_mod_lfrt_must_trip
+            ),
+            opModLVRTMayTrip = m.DERCurveLink(
+                href = self.op_mod_lvrt_may_trip
+            ),
+            opModLVRTMomentaryCessation = m.DERCurveLink(
+                href = self.op_mod_lvrt_momentary_cessation
+            ),
+            opModLVRTMustTrip = m.DERCurveLink(
+                href = self.op_mod_lvrt_must_trip
+            ),
             opModTargetVar = m.ReactivePower(
                 multiplier = self.opModTargetVar.multiplier,
                 value = self.opModTargetVar.value
@@ -341,10 +364,18 @@ class DERControlBaseColumns:
                 multiplier = self.opModTargetW.multiplier,
                 value = self.opModTargetW.value
             ),
-            opModVoltVar = self.op_mod_volt_var,
-            opModVoltWatt = self.op_mod_volt_watt,
-            opModWattPF = self.op_mod_watt_pf,
-            opModWattVar = self.op_mod_watt_var
+            opModVoltVar = m.DERCurveLink(
+                href = self.op_mod_volt_var
+            ),
+            opModVoltWatt = m.DERCurveLink(
+                href = self.op_mod_volt_watt
+            ),
+            opModWattPF = m.DERCurveLink(
+                href = self.op_mod_watt_pf
+            ),
+            opModWattVar = m.DERCurveLink(
+                href = self.op_mod_watt_var
+            )
         )
     
     @classmethod
@@ -376,17 +407,17 @@ class DERControlBaseColumns:
                 kuf = der_control_base.opModFreqDroop.kUF,
                 open_loop_tms = der_control_base.opModFreqDroop.openLoopTms
             ) if der_control_base.opModFreqDroop is not None else None,
-            op_mod_freq_watt = der_control_base.opModFreqWatt,
-            op_mod_hfrt_may_trip = der_control_base.opModHFRTMayTrip,
-            op_mod_hfrt_must_trip = der_control_base.opModHFRTMustTrip,
-            op_mod_hvrt_may_trip = der_control_base.opModHVRTMayTrip,
-            op_mod_hvrt_momentary_cessation = der_control_base.opModHVRTMomentaryCessation,
-            op_mod_hvrt_must_trip = der_control_base.opModHVRTMustTrip,
-            op_mod_lfrt_may_trip = der_control_base.opModLFRTMayTrip,
-            op_mod_lfrt_must_trip = der_control_base.opModLFRTMustTrip,
-            op_mod_lvrt_may_trip = der_control_base.opModLVRTMayTrip,
-            op_mod_lvrt_momentary_cessation = der_control_base.opModLVRTMomentaryCessation,
-            op_mod_lvrt_must_trip = der_control_base.opModLVRTMustTrip,
+            op_mod_freq_watt = der_control_base.opModFreqWatt.href if der_control_base.opModFreqWatt else None,
+            op_mod_hfrt_may_trip = der_control_base.opModHFRTMayTrip.href if der_control_base.opModHFRTMayTrip else None,
+            op_mod_hfrt_must_trip = der_control_base.opModHFRTMustTrip.href if der_control_base.opModHFRTMustTrip else None,
+            op_mod_hvrt_may_trip = der_control_base.opModHVRTMayTrip.href if der_control_base.opModHVRTMayTrip else None,
+            op_mod_hvrt_momentary_cessation = der_control_base.opModHVRTMomentaryCessation.href if der_control_base.opModHVRTMomentaryCessation else None,
+            op_mod_hvrt_must_trip = der_control_base.opModHVRTMustTrip.href if der_control_base.opModHVRTMustTrip else None,
+            op_mod_lfrt_may_trip = der_control_base.opModLFRTMayTrip.href if der_control_base.opModLFRTMayTrip else None,
+            op_mod_lfrt_must_trip = der_control_base.opModLFRTMustTrip.href if der_control_base.opModLFRTMustTrip else None,
+            op_mod_lvrt_may_trip = der_control_base.opModLVRTMayTrip.href if der_control_base.opModLVRTMayTrip else None,
+            op_mod_lvrt_momentary_cessation = der_control_base.opModLVRTMomentaryCessation.href if der_control_base.opModLVRTMomentaryCessation else None,
+            op_mod_lvrt_must_trip = der_control_base.opModLVRTMustTrip.href if der_control_base.opModLVRTMustTrip else None,
             opModTargetVar = cls.ReactivePowerColumns(
                 multiplier = der_control_base.opModTargetVar.multiplier,
                 value = der_control_base.opModTargetVar.value
@@ -395,10 +426,10 @@ class DERControlBaseColumns:
                 multiplier = der_control_base.opModTargetW.multiplier,
                 value = der_control_base.opModTargetW.value
             ) if der_control_base.opModTargetW is not None else None,
-            op_mod_volt_var = der_control_base.opModVoltVar,
-            op_mod_volt_watt = der_control_base.opModVoltWatt,
-            op_mod_watt_pf = der_control_base.opModWattPF,
-            op_mod_watt_var = der_control_base.opModWattVar
+            op_mod_volt_var = der_control_base.opModVoltVar.href if der_control_base.opModVoltVar else None,
+            op_mod_volt_watt = der_control_base.opModVoltWatt.href if der_control_base.opModVoltWatt else None,
+            op_mod_watt_pf = der_control_base.opModWattPF.href if der_control_base.opModWattPF else None,
+            op_mod_watt_var = der_control_base.opModWattVar.href if der_control_base.opModWattVar else None
         )
         return init_c
 
@@ -448,7 +479,7 @@ class DERControlTable(DERControlBaseColumns, Base):
 
     description: Mapped[Optional[str]] = mapped_column(String(32))
     mrid: Mapped[Optional[str]] = mapped_column(String(50))
-    version: Mapped[Optional[int]] = mapped_column(default=None)
+    version: Mapped[int] = mapped_column(Integer, default=0)
     subscribable: Mapped[bool] = mapped_column(default=False)
     reply_to: Mapped[Optional[str]] = mapped_column(String(50))
     response_required: Mapped[Optional[str]] = mapped_column(String(20))
@@ -474,7 +505,7 @@ class DERControlTable(DERControlBaseColumns, Base):
             mRID = self.mrid,
             description = self.description,
             version = self.version,
-            subscribable = self.subscribable,
+            subscribable = 1 if self.subscribable else 0,
             replyTo = self.reply_to,
             responseRequired = self.response_required,
             href = hrefs.SEP.join([
@@ -506,10 +537,10 @@ class DERControlTable(DERControlBaseColumns, Base):
                 duration = der_control.interval.duration,
                 start = der_control.interval.start
             ),
-            mrid = der_control.mRID,
+            mrid = der_control.mRID if der_control.mRID else uuid_2030_5(),
             description = der_control.description,
-            version = der_control.version,
-            subscribable = der_control.subscribable,
+            version = der_control.version if der_control.version else 0,
+            subscribable = der_control.subscribable == 1,
             reply_to = der_control.replyTo,
             response_required = der_control.responseRequired
         )
@@ -519,7 +550,7 @@ class DefaultDERControlTable(DERControlBaseColumns, Base):
     __tablename__ = "default_der_control"
     __allow_unmapped__ = True
     id: Mapped[int] = mapped_column(ForeignKey("der_program.id"), primary_key=True)
-    derProgram = relationship("DERProgramTable", backref=backref("defaultDERControl", uselist=False))
+    derProgram = relationship("DERProgramTable", lazy='subquery', backref=backref("defaultDERControl", uselist=False))
 
     set_es_delay: Mapped[Optional[int]] = mapped_column(default=None)
     set_es_high_freq: Mapped[Optional[int]] = mapped_column(default=None)
@@ -530,6 +561,11 @@ class DefaultDERControlTable(DERControlBaseColumns, Base):
     set_es_random_delay: Mapped[Optional[int]] = mapped_column(default=None)
     set_grad_w: Mapped[Optional[int]] = mapped_column(default=None)
     set_soft_grad_w: Mapped[Optional[int]] = mapped_column(default=None)
+
+    description: Mapped[Optional[str]] = mapped_column(String(32))
+    mrid: Mapped[Optional[str]] = mapped_column(String(50))
+    version: Mapped[int] = mapped_column(Integer, default=0)
+    subscribable: Mapped[bool] = mapped_column(default=False)
 
     def to_model(self):
         return m.DefaultDERControl(
@@ -543,6 +579,15 @@ class DefaultDERControlTable(DERControlBaseColumns, Base):
             setESRandomDelay = self.set_es_random_delay,
             setGradW = self.set_grad_w,
             setSoftGradW = self.set_soft_grad_w,
+            mRID = self.mrid,
+            description = self.description,
+            version = self.version,
+            subscribable = 1 if self.subscribable else 0,
+            href = hrefs.SEP.join([
+                hrefs.DEFAULT_DERP_ROOT, 
+                str(self.derProgram.id),
+                "dderc",
+            ])
         )
 
     server_default = None
@@ -568,7 +613,11 @@ class DefaultDERControlTable(DERControlBaseColumns, Base):
             set_es_ramp_tms = dderc_model.setESRampTms,
             set_es_random_delay = dderc_model.setESRandomDelay,
             set_grad_w = dderc_model.setGradW,
-            set_soft_grad_w = dderc_model.setSoftGradW
+            set_soft_grad_w = dderc_model.setSoftGradW,
+            description = dderc_model.description,
+            mrid = dderc_model.mRID if dderc_model.mRID else uuid_2030_5(),
+            version = dderc_model.version if dderc_model.version else 0,
+            subscribable = dderc_model.subscribable == 1
         )
 # ---------------
 
@@ -652,8 +701,8 @@ class DERCurveTable(Base):
     def from_model(cls, der_curve: m.DERCurve, der_program_id: int):
         return cls(
             description = der_curve.description,
-            mrid = der_curve.mRID,
-            version = der_curve.version,
+            mrid = der_curve.mRID if der_curve.mRID else uuid_2030_5(),
+            version = der_curve.version if der_curve.version else 0,
             autonomous_vref_enable = der_curve.autonomousVRefEnable,
             autonomous_vref_time_constant = der_curve.autonomousVRefTimeConstant,
             creation_time = der_curve.creationTime,
@@ -679,7 +728,7 @@ class DERProgramTable(Base):
     primacy: Mapped[int]
     description: Mapped[str] = mapped_column(String(32))
     mrid: Mapped[str] = mapped_column(String(50))
-    version: Mapped[int]
+    version: Mapped[int] = mapped_column(Integer, default=0)
 
     derControls = relationship("DERControlTable", 
                                 back_populates="derProgram",
@@ -716,8 +765,8 @@ class DERProgramTable(Base):
         return cls(
             primacy = der_program.primacy,
             description = der_program.description,
-            mrid = der_program.mRID,
-            version = der_program.version
+            mrid = der_program.mRID if der_program.mRID else uuid_2030_5(),
+            version = der_program.version if der_program.version else 0,
         )
 
 # ---------------
