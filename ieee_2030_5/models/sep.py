@@ -2080,12 +2080,11 @@ class IdentifiedObject(Resource):
     class Meta:
         namespace = "urn:ieee:std:2030.5:ns"
 
-    mRID: Optional[bytes] = field(default=None,
+    mRID: Optional[str] = field(default=None,
                                   metadata={
                                       "type": "Element",
                                       "required": True,
-                                      "max_length": 16,
-                                      "format": "base16",
+                                      "max_length": 32,
                                   })
     description: Optional[str] = field(default=None,
                                        metadata={
@@ -2743,11 +2742,10 @@ class RespondableResource(Resource):
     replyTo: Optional[str] = field(default=None, metadata={
         "type": "Attribute",
     })
-    responseRequired: bytes = field(default=b"\x00",
+    responseRequired: str = field(default="00",
                                     metadata={
                                         "type": "Attribute",
-                                        "max_length": 1,
-                                        "format": "base16",
+                                        "max_length": 2,
                                     })
 
 
@@ -2787,24 +2785,21 @@ class Response(Resource):
     createdDateTime: Optional[int] = field(default=None, metadata={
         "type": "Element",
     })
-    endDeviceLFDI: Optional[bytes] = field(default=None,
+    endDeviceLFDI: Optional[str] = field(default=None,
                                            metadata={
                                                "type": "Element",
                                                "required": True,
-                                               "max_length": 20,
-                                               "format": "base16",
+                                               "max_length": 40,
                                            })
     status: Optional[int] = field(default=None, metadata={
         "type": "Element",
     })
-    subject: Optional[bytes] = field(default=None,
+    subject: Optional[str] = field(default=None,
                                      metadata={
                                          "type": "Element",
                                          "required": True,
-                                         "max_length": 16,
-                                         "format": "base16",
+                                         "max_length": 40,
                                      })
-
 
 @dataclass
 class SelfDeviceLink(Link):
@@ -4971,12 +4966,11 @@ class RespondableIdentifiedObject(RespondableResource):
     class Meta:
         namespace = "urn:ieee:std:2030.5:ns"
 
-    mRID: Optional[bytes] = field(default=None,
+    mRID: Optional[str] = field(default=None,
                                   metadata={
                                       "type": "Element",
                                       "required": True,
-                                      "max_length": 16,
-                                      "format": "base16",
+                                      "max_length": 32,
                                   })
     description: Optional[str] = field(default=None,
                                        metadata={
@@ -5007,12 +5001,11 @@ class RespondableSubscribableIdentifiedObject(RespondableResource):
     class Meta:
         namespace = "urn:ieee:std:2030.5:ns"
 
-    mRID: Optional[bytes] = field(default=None,
+    mRID: Optional[str] = field(default=None,
                                   metadata={
                                       "type": "Element",
                                       "required": True,
-                                      "max_length": 16,
-                                      "format": "base16",
+                                      "max_length": 32,
                                   })
     description: Optional[str] = field(default=None,
                                        metadata={
@@ -5107,12 +5100,11 @@ class SubscribableIdentifiedObject(SubscribableResource):
     class Meta:
         namespace = "urn:ieee:std:2030.5:ns"
 
-    mRID: Optional[bytes] = field(default=None,
+    mRID: Optional[str] = field(default=None,
                                   metadata={
                                       "type": "Element",
                                       "required": True,
-                                      "max_length": 16,
-                                      "format": "base16",
+                                      "max_length": 32,
                                   })
     description: Optional[str] = field(default=None,
                                        metadata={
@@ -7700,11 +7692,10 @@ class DERControl(RandomizableEvent):
                                                          "type": "Element",
                                                          "required": True,
                                                      })
-    deviceCategory: Optional[bytes] = field(default=None,
+    deviceCategory: Optional[str] = field(default=None,
                                             metadata={
                                                 "type": "Element",
-                                                "max_length": 4,
-                                                "format": "base16",
+                                                "max_length": 6,
                                             })
 
 
@@ -7803,6 +7794,15 @@ class EndDeviceList(SubscribableList):
         "type": "Attribute",
     })
 
+@dataclass
+class ResponseList(SubscribableList):
+
+    class Meta:
+        namespace = "urn:ieee:std:2030.5:ns"
+
+    Response: List[Response] = field(default_factory=list, metadata={
+        "type": "Element",
+    })
 
 @dataclass
 class FlowReservationResponseList(SubscribableList):

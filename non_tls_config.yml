@@ -9,6 +9,8 @@ non_tls: True
 tls_repository: "~/non_tls"
 openssl_cnf: "openssl.cnf"
 
+db_info_file: "ieee_2030_5/db/dbconfig.yml"
+
 # enddevices_register_access_only
 # enddevices_create_on_start
 # enddevices_allow_all_access
@@ -98,26 +100,6 @@ fsas:
   - description: fsa1
     programs:
       - Default Program
-
-programs:
-  - description: Program1
-    primacy: 0
-    DefaultDERControl:
-      setESDelay: 30
-      setGradW: 1000
-
-      DERControlBase:
-        opModConnect: true
-        opModEnergize: true
-  - description: Program2
-    primacy: 0
-    DefaultDERControl:
-      setESDelay: 30
-      setGradW: 1000
-
-      DERControlBase:
-        opModConnect: true
-        opModEnergize: true
 
 default_der_control:
   DERControlBase:

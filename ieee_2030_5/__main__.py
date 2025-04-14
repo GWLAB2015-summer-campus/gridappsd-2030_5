@@ -57,6 +57,7 @@ import ieee_2030_5.hrefs as hrefs
 from ieee_2030_5.certs import TLSRepository, NonTLSRepository
 from ieee_2030_5.config import InvalidConfigFile, ServerConfiguration
 from ieee_2030_5.data.indexer import add_href
+from ieee_2030_5.db.conn import init_db
 
 
 class ServerThread(threading.Thread):
@@ -220,6 +221,8 @@ def _main():
     cfg_dict = yaml.safe_load(Path(opts.config).expanduser().resolve(strict=True).read_text())
 
     config = ServerConfiguration(**cfg_dict)
+
+    init_db(config)
 
     if config.port is None:
         if config.non_tls:
