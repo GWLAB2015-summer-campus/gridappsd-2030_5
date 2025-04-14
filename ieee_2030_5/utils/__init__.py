@@ -86,12 +86,13 @@ def clean_none_values_recursively(obj):
     else:
         return obj
 
-def serialize_dataclass(obj: dataclass) -> str:
+def serialize_dataclass(obj: dataclass, need_clean = False) -> str:
     """
     Serializes a dataclass that was created via xsdata to an xml string for
     returning to a client.
     """
-    obj = clean_none_values_recursively(obj)
+    if need_clean:
+        obj = clean_none_values_recursively(obj)
     return __serializer__.render(obj, ns_map=__ns_map__)
 
 
@@ -115,8 +116,8 @@ def xml_to_dataclass(xml: str, type: Optional[Type] = None) -> dataclass:
     return parsed
 
 
-def dataclass_to_xml(dc: dataclass) -> str:
-    return serialize_dataclass(dc)
+def dataclass_to_xml(dc: dataclass, need_clean = False) -> str:
+    return serialize_dataclass(dc, need_clean)
 
 
 def get_lfdi_from_cert(path: Path) -> t.Lfdi:

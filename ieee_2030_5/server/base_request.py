@@ -97,5 +97,5 @@ class RequestOp(ServerOperation):
 
         return pth
 
-    def build_response_from_dataclass(self, obj: dataclass) -> Response:
-        return Response(dataclass_to_xml(obj), headers=self._headers)
+    def build_response_from_dataclass(self, obj: dataclass, need_clean=False) -> Response:
+        return Response(dataclass_to_xml(obj, need_clean), headers=self._headers)

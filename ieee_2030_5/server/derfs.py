@@ -281,4 +281,4 @@ class DERProgramRequests(RequestOp):
         if not retval:
             raise NotFound(f"{request.path}")
 
-        return self.build_response_from_dataclass(retval)
+        return self.build_response_from_dataclass(retval, True)
